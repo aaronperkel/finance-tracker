@@ -1,0 +1,4 @@
+<Files "add_snapshot.php">
+  AuthType CAS
+  Require ldap-filter uid=aperkel
+</Files>
