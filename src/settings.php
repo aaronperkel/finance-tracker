@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $errors[] = "Invalid value for $key. Must be a number between 0.00 and 1.00 (e.g., 0.15 for 15%).";
                 } else {
                     // Ensure it's stored with a consistent precision, e.g., 4 decimal places
-                    $valid_settings[$key] = number_format((float)$value, 4, '.', ''); 
+                    $valid_settings[$key] = number_format((float)$value, 4, '.', '');
                 }
                 break;
         }
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         echo json_encode(['error' => 'No valid settings provided for update after validation.']);
         exit;
     }
-    
+
     $pdo->beginTransaction();
     try {
         $sql = "INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)

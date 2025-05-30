@@ -60,10 +60,10 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
     <style>
         /* Basic Reset & Body Styling - Consistent with dashboard.php */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #eef1f5;
-            color: #333; 
+            color: #333;
             line-height: 1.6;
         }
 
@@ -98,16 +98,16 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
         /* Main Content Container */
         .container {
             padding: 0 20px 20px 20px; /* Added bottom padding */
-            max-width: 800px; 
-            margin: 0 auto; 
+            max-width: 800px;
+            margin: 0 auto;
         }
-        
+
         h1.page-title {
             text-align: center;
             color: #2c3e50;
             margin-bottom: 25px;
         }
-        
+
         /* Form Container Styling */
         .form-container {
             background-color: #fff;
@@ -121,9 +121,9 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
 
 
         /* Form elements - Consistent styling */
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
+        label {
+            display: block;
+            margin-bottom: 8px;
             font-weight: 600;
             color: #555;
         }
@@ -181,7 +181,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
         }
 
         /* Feedback Messages */
-        .feedback-message { 
+        .feedback-message {
             margin-top: 0; /* Reset margin as it's inside form-container */
             margin-bottom: 20px; /* Space below feedback if it's shown before form */
             padding: 12px;
@@ -189,14 +189,14 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             font-weight: bold;
             text-align: center;
         }
-        .feedback-message.success { 
-            color: #1d6f42; 
-            background-color: #d4edda; 
-            border: 1px solid #c3e6cb; 
+        .feedback-message.success {
+            color: #1d6f42;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
         }
-        .feedback-message.error { 
-            color: #721c24; 
-            background-color: #f8d7da; 
+        .feedback-message.error {
+            color: #721c24;
+            background-color: #f8d7da;
             border: 1px solid #f5c6cb;
         }
         .feedback-message:empty { display: none; }
@@ -233,7 +233,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
 
     <div class="container">
         <h1 class="page-title">Add New Snapshot</h1>
-        
+
         <div class="form-container">
             <?php if (!empty($feedback_message)): ?>
                 <div class="feedback-message <?= strpos(strtolower($feedback_message), 'error') !== false || strpos(strtolower($feedback_message), 'invalid') !== false ? 'error' : 'success' ?>">
@@ -246,7 +246,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
                     <label for="date">Snapshot Date:</label>
                     <input type="date" id="date" name="date" value="<?= date('Y-m-d') ?>" required>
                 </div>
-                
+
                 <table>
                     <thead>
                         <tr>

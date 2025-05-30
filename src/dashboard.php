@@ -6,10 +6,10 @@
     <style>
         /* Basic Reset & Body Styling */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #eef1f5; /* Lighter gray background */
-            color: #333; 
+            color: #333;
             line-height: 1.6;
         }
 
@@ -45,13 +45,13 @@
         .container {
             padding: 0 20px; /* Add some horizontal padding to the main content area */
         }
-        
+
         h1.page-title { /* Specific styling for the main H1 */
             text-align: center;
             color: #2c3e50;
             margin-bottom: 20px;
         }
-        h2 { 
+        h2 {
             color: #34495e; /* Slightly lighter blue for section headers */
             border-bottom: 2px solid #bdc3c7; /* Light gray border */
             padding-bottom: 10px;
@@ -74,12 +74,12 @@
         }
         #financial-summary-container { flex: 1; min-width: 300px; } /* Adjusted to flex: 1, was 2 */
         /* #hour-logging-container { flex: 1; min-width: 280px; }    REMOVED */
-        
+
         /* Individual Sections Styling */
-        #financial-summary div { margin-bottom: 12px; } 
-        #financial-summary span { font-weight: bold; color: #2980b9; } 
+        #financial-summary div { margin-bottom: 12px; }
+        #financial-summary span { font-weight: bold; color: #2980b9; }
         .currency::before { content: "$"; }
-        .debug-info { font-size: 0.85em; color: #7f8c8d; margin-top: 15px; } 
+        .debug-info { font-size: 0.85em; color: #7f8c8d; margin-top: 15px; }
         #payday-message-container { /* Style for the Pay Day! message */
             font-size: 1.2em;
             font-weight: bold;
@@ -93,9 +93,9 @@
         }
 
         /* Form elements */
-        label { 
-            display: block; 
-            margin-bottom: 6px; 
+        label {
+            display: block;
+            margin-bottom: 6px;
             font-weight: 600; /* Slightly bolder labels */
             color: #555;
         }
@@ -126,23 +126,23 @@
         button[type="submit"]:hover { background-color: #229954; /* Darker green */ }
 
         /* Feedback Messages */
-        #log-hours-feedback, #summary-error { 
-            margin-top: 10px; 
+        #log-hours-feedback, #summary-error {
+            margin-top: 10px;
             padding: 10px;
             border-radius: 4px;
             font-weight: bold;
         }
-        #log-hours-feedback.success, #summary-error.success { 
+        #log-hours-feedback.success, #summary-error.success {
             color: #1d6f42; /* Darker green for text */
             background-color: #d4edda; /* Light green background */
-            border: 1px solid #c3e6cb; 
+            border: 1px solid #c3e6cb;
         }
-        #log-hours-feedback.error, #summary-error.error { 
+        #log-hours-feedback.error, #summary-error.error {
             color: #721c24; /* Darker red for text */
             background-color: #f8d7da; /* Light red background */
             border: 1px solid #f5c6cb;
         }
-        
+
         /* Chart Container */
         #chart-container {
             background-color: #fff;
@@ -193,13 +193,13 @@
                     <div>Total Cash on Hand: <span id="total-cash" class="currency">N/A</span></div>
                     <div>Receivables: <span id="receivables-balance" class="currency">N/A</span></div>
                     <div><strong>Total Owed:</strong> <span id="total-owed" class="currency">0.00</span></div>
-                    
+
                     <div id="payday-message-container" style="display: none;">Pay Day!</div>
                     <div id="next-paycheck-line">
-                        Estimated Next Paycheck: <span id="next-paycheck-amount" class="currency">N/A</span> 
+                        Estimated Next Paycheck: <span id="next-paycheck-amount" class="currency">N/A</span>
                         on Next Pay Date: <span id="next-paycheck-date">N/A</span>
                     </div>
-                    
+
                     <div id="future-net-worth-line">Future Net Worth (after next paycheck): <span id="future-net-worth" class="currency">N/A</span></div>
                     <div class="debug-info">
                         Debug Pay Period: <span id="debug-pay-start">N/A</span> to <span id="debug-pay-end">N/A</span>
@@ -217,7 +217,7 @@
 
     <script>
         const summaryErrorDiv = document.getElementById('summary-error');
-        let nwChartInstance = null; 
+        let nwChartInstance = null;
 
         function formatCurrency(value) {
             const num = parseFloat(value);
@@ -248,7 +248,7 @@
                     document.getElementById('total-cash').textContent = formatCurrency(data.total_cash_on_hand);
                     document.getElementById('receivables-balance').textContent = formatCurrency(data.receivables_balance);
                     document.getElementById('total-owed').textContent = formatCurrency(data.total_liabilities !== undefined ? data.total_liabilities : 0);
-                    
+
                     const nextPaycheckLine = document.getElementById('next-paycheck-line');
                     const paydayMessageContainer = document.getElementById('payday-message-container');
                     const futureNetWorthLine = document.getElementById('future-net-worth-line');
@@ -258,7 +258,7 @@
                         paydayMessageContainer.style.display = 'block'; // Show "Pay Day!"
                         futureNetWorthLine.style.display = 'none'; // Hide future net worth on payday
                         // Values for estimated_upcoming_pay will be 0 from API
-                        document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay); 
+                        document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
                         document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'Today!';
                     } else {
                         nextPaycheckLine.style.display = 'block'; // Or 'inline' or '' depending on original display
@@ -267,9 +267,9 @@
                         document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
                         document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'N/A';
                     }
-                    
+
                     document.getElementById('future-net-worth').textContent = formatCurrency(data.future_net_worth);
-                    
+
                     document.getElementById('debug-pay-start').textContent = data.debug_pay_period_start || 'N/A';
                     document.getElementById('debug-pay-end').textContent = data.debug_pay_period_end || 'N/A';
 
@@ -277,7 +277,7 @@
                     const vals = data.net_worth_history.map(r => parseFloat(r.networth));
 
                     if (nwChartInstance) {
-                        nwChartInstance.destroy(); 
+                        nwChartInstance.destroy();
                     }
                     const chartCtx = document.getElementById('nwChart').getContext('2d');
                     nwChartInstance = new Chart(chartCtx, {
@@ -292,10 +292,10 @@
                                 tension: 0.1
                             }]
                         },
-                        options: { 
+                        options: {
                             scales: { y: { beginAtZero: false } },
                             responsive: true,
-                            maintainAspectRatio: false 
+                            maintainAspectRatio: false
                         }
                     });
                 })

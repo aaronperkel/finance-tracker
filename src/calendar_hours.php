@@ -7,10 +7,10 @@
     <style>
         /* Basic Reset & Body Styling - Consistent with dashboard.php */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #eef1f5;
-            color: #333; 
+            color: #333;
             line-height: 1.6;
         }
 
@@ -46,9 +46,9 @@
         .container {
             padding: 0 20px 20px 20px;
             max-width: 1000px; /* Wider for calendar */
-            margin: 0 auto; 
+            margin: 0 auto;
         }
-        
+
         h1.page-title {
             text-align: center;
             color: #2c3e50;
@@ -127,9 +127,9 @@
             font-weight: bold;
         }
         .day-number { font-size: 0.9em; display: block; margin-bottom: 5px; text-align: right; }
-        .hours-display { 
-            font-size: 1.1em; 
-            font-weight: bold; 
+        .hours-display {
+            font-size: 1.1em;
+            font-weight: bold;
             color: #27ae60; /* Green for hours */
             display: block;
             margin-top: 5px;
@@ -261,7 +261,7 @@
         const saveHoursBtn = document.getElementById('save-hours-btn');
         const cancelHoursBtn = document.getElementById('cancel-hours-btn');
         const modalFeedbackEl = document.getElementById('modal-feedback');
-        
+
         let currentModalDate = null; // To store YYYY-MM-DD for the modal
 
         let today = new Date();
@@ -273,7 +273,7 @@
         jobStartDate.setHours(0, 0, 0, 0);
 
 
-        const monthNames = ["January", "February", "March", "April", "May", "June", 
+        const monthNames = ["January", "February", "March", "April", "May", "June",
                             "July", "August", "September", "October", "November", "December"];
 
         function renderCalendar(month, year) {
@@ -315,11 +315,11 @@
                             // No click listener for modal
                         } else {
                             // Default for valid weekday, pre-fetch
-                            hoursDisplaySpan.textContent = '7.50'; 
+                            hoursDisplaySpan.textContent = '7.50';
                             hoursDisplaySpan.classList.add('default-hours');
                             dayCell.addEventListener('click', () => openEditModal(dateStr, hoursDisplaySpan.textContent, hoursDisplaySpan.classList.contains('default-hours')));
                         }
-                        
+
                         if (date === today.getDate() && year === today.getFullYear() && month === today.getMonth()) {
                             dayCell.classList.add('current-day');
                         }
@@ -397,7 +397,7 @@
 
             currentModalDate = dateStr;
             modalSelectedDateEl.textContent = dateStr;
-            
+
             if (isDefault && currentHoursText === '7.50') {
                  modalHoursInput.value = '7.50'; // Pre-fill with 7.5 if it was a default
             } else if (currentHoursText && currentHoursText !== '-') {
@@ -405,7 +405,7 @@
             } else {
                 modalHoursInput.value = ''; // Empty if '-' or no hours
             }
-            
+
             modalFeedbackEl.textContent = '';
             modalFeedbackEl.className = '';
             modal.style.display = 'block';
@@ -454,7 +454,7 @@
                             hoursSpan.textContent = ''; // Show dash via CSS :empty pseudo
                             hoursSpan.classList.add('placeholder-dash');
                             hoursSpan.classList.remove('default-hours');
-                        } else if (newHours === 7.5 && /* logic to determine if it should be default style */ false) { 
+                        } else if (newHours === 7.5 && /* logic to determine if it should be default style */ false) {
                             // This part is tricky: if user explicitly saves 7.5, should it look default or explicit?
                             // For now, any save makes it look explicit.
                             hoursSpan.textContent = newHours.toFixed(2);
@@ -465,7 +465,7 @@
                             hoursSpan.classList.remove('default-hours', 'placeholder-dash');
                         }
                     }
-                    setTimeout(() => { modal.style.display = 'none'; }, 1000); 
+                    setTimeout(() => { modal.style.display = 'none'; }, 1000);
                 } else if (result.error) {
                     modalFeedbackEl.textContent = 'Error: ' + result.error;
                     modalFeedbackEl.className = 'error';

@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sql = "INSERT INTO logged_hours (log_date, hours_worked) VALUES (?, ?)
                 ON DUPLICATE KEY UPDATE hours_worked = VALUES(hours_worked)";
         $stmt = $pdo->prepare($sql);
-        
+
         // Use the validated and cast $hours_worked
         if ($stmt->execute([$log_date, $hours_worked])) {
             // 5. Output success message
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 6. Output database error message
         http_response_code(500);
         // In a production app, log this error instead of echoing it directly
-        // error_log($e->getMessage()); 
+        // error_log($e->getMessage());
         echo json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
     }
 } else {

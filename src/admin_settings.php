@@ -6,10 +6,10 @@
     <style>
         /* Basic Reset & Body Styling - Consistent with dashboard.php */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #eef1f5;
-            color: #333; 
+            color: #333;
             line-height: 1.6;
         }
 
@@ -47,13 +47,13 @@
             max-width: 800px; /* Max width for settings page */
             margin: 0 auto; /* Center container */
         }
-        
+
         h1.page-title {
             text-align: center;
             color: #2c3e50;
             margin-bottom: 25px;
         }
-        
+
         /* Settings Form Container */
         .settings-form-container {
             background-color: #fff;
@@ -63,9 +63,9 @@
         }
 
         /* Form elements - Consistent with dashboard.php */
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
+        label {
+            display: block;
+            margin-bottom: 8px;
             font-weight: 600;
             color: #555;
         }
@@ -97,21 +97,21 @@
         button[type="submit"]:hover { background-color: #229954; }
 
         /* Feedback Messages - Consistent with dashboard.php */
-        #settings-feedback { 
-            margin-top: 20px; 
+        #settings-feedback {
+            margin-top: 20px;
             padding: 12px;
             border-radius: 4px;
             font-weight: bold;
             text-align: center;
         }
-        #settings-feedback.success { 
-            color: #1d6f42; 
-            background-color: #d4edda; 
-            border: 1px solid #c3e6cb; 
+        #settings-feedback.success {
+            color: #1d6f42;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
         }
-        #settings-feedback.error { 
-            color: #721c24; 
-            background-color: #f8d7da; 
+        #settings-feedback.error {
+            color: #721c24;
+            background-color: #f8d7da;
             border: 1px solid #f5c6cb;
         }
         #settings-feedback:empty { /* Hide if empty */
@@ -146,7 +146,7 @@
 
     <div class="container">
         <h1 class="page-title">Application Settings</h1>
-        
+
         <div class="settings-form-container">
             <form id="update-settings-form">
                 <div>
@@ -244,7 +244,7 @@
                     feedbackDiv.className = 'error';
                     return;
                 }
-                // You could add more validation here, e.g. pd2 >= pd1, 
+                // You could add more validation here, e.g. pd2 >= pd1,
                 // but settings.php API should also handle this.
 
                 fetch('settings.php', {

@@ -89,7 +89,7 @@ try {
 
 
     // Estimated Upcoming Pay and Next Pay Date
-    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings 
+    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings
                                   WHERE setting_key IN ('pay_rate', 'pay_day_1', 'pay_day_2', 'federal_tax_rate', 'state_tax_rate')");
     $app_settings = [];
     while ($row = $settings_stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -120,7 +120,7 @@ try {
         $pay_rate = floatval($app_settings['pay_rate']);
         $pay_day_1_setting = intval($app_settings['pay_day_1']);
         $pay_day_2_setting = intval($app_settings['pay_day_2']);
-        
+
         $federal_tax_rate_value = isset($app_settings['federal_tax_rate']) ? floatval($app_settings['federal_tax_rate']) : 0;
         $state_tax_rate_value = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
 
@@ -129,7 +129,7 @@ try {
 
         $current_date_time = new DateTime();
         $current_date_time->setTime(0,0,0); // Normalize current date for comparisons
-        
+
         // $current_day_of_month = (int)$current_date_time->format('j'); // For direct day comparison if needed later
         $current_year = (int)$current_date_time->format('Y');
         $current_month = (int)$current_date_time->format('n');
@@ -180,12 +180,12 @@ try {
             // Next payday is 1st of next month, so previous was 2nd payday of current month
             $true_prev_payday_obj = clone $payday2_current_month;
         }
-        
+
         // Calculate Pay Period Boundaries
         $current_pay_period_end_date_obj = get_cutoff_sunday_before_payday($true_next_payday_obj);
         $prev_pay_period_end_date_obj = get_cutoff_sunday_before_payday($true_prev_payday_obj);
         $current_pay_period_start_date_obj = (clone $prev_pay_period_end_date_obj)->modify('+1 day');
-        
+
         $response["debug_pay_period_start"] = $current_pay_period_start_date_obj->format('Y-m-d');
         $response["debug_pay_period_end"] = $current_pay_period_end_date_obj->format('Y-m-d');
         $response["debug_true_next_payday"] = $true_next_payday_obj->format('Y-m-d');
@@ -233,7 +233,7 @@ try {
                 }
                 $loop_date->modify('+1 day');
             }
-            
+
             $gross_estimated_pay = $total_hours_for_period * $pay_rate;
             $estimated_federal_tax = $gross_estimated_pay * $federal_tax_rate_value;
             $estimated_state_tax = $gross_estimated_pay * $state_tax_rate_value;
@@ -245,7 +245,7 @@ try {
             $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2);
         }
     }
-    
+
     // Future Net Worth - always use the (potentially net) estimated_upcoming_pay
     $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
 

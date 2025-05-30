@@ -22,22 +22,22 @@ $response_data = [];
 try {
     // Determine the number of days in the given month and year
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-    
+
     // Create the first and last day of the month for the SQL query
     $firstDayOfMonth = sprintf("%04d-%02d-01", $year, $month);
     $lastDayOfMonth = sprintf("%04d-%02d-%02d", $year, $month, $daysInMonth);
 
     // 4. Fetch Logged Hours
     $stmt = $pdo->prepare("
-        SELECT log_date, hours_worked 
-        FROM logged_hours 
+        SELECT log_date, hours_worked
+        FROM logged_hours
         WHERE log_date >= :first_day AND log_date <= :last_day
         ORDER BY log_date ASC
     ");
-    
+
     $stmt->bindParam(':first_day', $firstDayOfMonth, PDO::PARAM_STR);
     $stmt->bindParam(':last_day', $lastDayOfMonth, PDO::PARAM_STR);
-    
+
     $stmt->execute();
     $logged_hours_for_month = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -49,7 +49,7 @@ try {
             $response_data[$dayOfMonth] = number_format((float)$row['hours_worked'], 2, '.', '');
         }
     }
-    
+
     echo json_encode($response_data);
 
 } catch (PDOException $e) {
