@@ -102,94 +102,92 @@ try {
     $response["estimated_state_tax"] = 0.00;
     $response["estimated_upcoming_pay"] = 0.00;
 
+    // Helper function for pay period cutoff
+    function get_cutoff_sunday_before_payday(DateTime $payDateObj): DateTime {
+        $cutoff = clone $payDateObj;
+        $cutoff->setTime(0,0,0); // Normalize time
+        // If payday is Sunday, 'previous sunday' goes to week before. We want current Sunday if payday is Sun.
+        // So, if it's not already Sunday, then find previous Sunday.
+        // No, the logic should be: "the Sunday *before* payday"
+        // If payday is Sun, May 25, previous Sunday is May 18.
+        // If payday is Fri, May 30, previous Sunday is May 25.
+        $cutoff->modify('previous sunday');
+        return $cutoff;
+    }
 
     if (isset($app_settings['pay_rate'], $app_settings['pay_day_1'], $app_settings['pay_day_2'])) {
         $pay_rate = floatval($app_settings['pay_rate']);
-        $pay_day_1 = intval($app_settings['pay_day_1']);
-        $pay_day_2 = intval($app_settings['pay_day_2']);
+        $pay_day_1_setting = intval($app_settings['pay_day_1']);
+        $pay_day_2_setting = intval($app_settings['pay_day_2']);
         
-        // Fetch tax rates, default to 0 if not set
         $federal_tax_rate_value = isset($app_settings['federal_tax_rate']) ? floatval($app_settings['federal_tax_rate']) : 0;
         $state_tax_rate_value = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
 
-        $current_date = new DateTime();
-        $current_day = intval($current_date->format('j'));
-        $current_month = intval($current_date->format('n'));
-        $current_year = intval($current_date->format('Y'));
+        $current_date_time = new DateTime();
+        $current_date_time->setTime(0,0,0); // Normalize current date for comparisons
+        $current_day = intval($current_date_time->format('j'));
+        
+        // Determine true_next_payday_obj
+        $true_next_payday_obj = new DateTime();
+        $true_next_payday_obj->setTime(0,0,0);
 
-        $next_pay_date_obj = new DateTime();
-        $prev_pay_date_obj = new DateTime();
-
-        // Adjust pay_day_2 if it's intended to be end of month
-        // For simplicity, if pay_day_2 > 28, consider it last day of month.
-        // A more robust solution would check actual last day of month.
-        $actual_pay_day_2 = $pay_day_2;
-        if ($pay_day_2 >= 28) {
-             $temp_date_for_last_day = clone $current_date;
-             $actual_pay_day_2 = intval($temp_date_for_last_day->format('t')); // last day of current month
+        $pay_day_1_this_month = (clone $current_date_time)->setDate($current_date_time->format('Y'), $current_date_time->format('n'), $pay_day_1_setting);
+        if ($pay_day_1_this_month->format('j') != $pay_day_1_setting) { // Handle cases like setting 30th for Feb
+            $pay_day_1_this_month->modify('last day of this month');
         }
 
-
-        if ($current_day < $pay_day_1) {
-            $next_pay_date_obj->setDate($current_year, $current_month, $pay_day_1);
-            // Previous pay date was pay_day_2 of last month
-            $prev_pay_date_obj->setDate($current_year, $current_month, $actual_pay_day_2);
-            $prev_pay_date_obj->modify('-1 month');
-            $prev_actual_pay_day_2 = $pay_day_2;
-             if ($pay_day_2 >=28) { // if original pay_day_2 was end-of-month style
-                 $prev_actual_pay_day_2 = intval($prev_pay_date_obj->format('t'));
-             }
-            $prev_pay_date_obj->setDate($prev_pay_date_obj->format('Y'), $prev_pay_date_obj->format('n'), $prev_actual_pay_day_2);
+        $days_in_current_month = $current_date_time->format('t');
+        $actual_pay_day_2_this_month_day = ($pay_day_2_setting > $days_in_current_month) ? $days_in_current_month : $pay_day_2_setting;
+        $pay_day_2_this_month = (clone $current_date_time)->setDate($current_date_time->format('Y'), $current_date_time->format('n'), $actual_pay_day_2_this_month_day);
 
 
-        } elseif ($current_day < $actual_pay_day_2) {
-            $next_pay_date_obj->setDate($current_year, $current_month, $actual_pay_day_2);
-            // Previous pay date was pay_day_1 of current month
-            $prev_pay_date_obj->setDate($current_year, $current_month, $pay_day_1);
+        if ($current_date_time < $pay_day_1_this_month) {
+            $true_next_payday_obj = $pay_day_1_this_month;
+        } elseif ($current_date_time < $pay_day_2_this_month) {
+            $true_next_payday_obj = $pay_day_2_this_month;
         } else {
-            // Next pay date is pay_day_1 of next month
-            $next_pay_date_obj->setDate($current_year, $current_month, $pay_day_1);
-            $next_pay_date_obj->modify('+1 month');
-            // Previous pay date was pay_day_2 of current month
-            $prev_pay_date_obj->setDate($current_year, $current_month, $actual_pay_day_2);
+            $true_next_payday_obj = (clone $current_date_time)->modify('+1 month')->setDate($current_date_time->format('Y'), $current_date_time->format('n'), $pay_day_1_setting);
+             if ($true_next_payday_obj->format('j') != $pay_day_1_setting) {
+                $true_next_payday_obj->modify('last day of this month');
+            }
         }
+        $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
+
+        // Determine true_prev_payday_obj
+        $true_prev_payday_obj = new DateTime();
+        $true_prev_payday_obj->setTime(0,0,0);
+        if ($true_next_payday_obj == $pay_day_1_this_month) { // If next is 15th this month
+            $true_prev_payday_obj = (clone $current_date_time)->modify('-1 month');
+            $days_in_prev_month = $true_prev_payday_obj->format('t');
+            $actual_pay_day_2_prev_month_day = ($pay_day_2_setting > $days_in_prev_month) ? $days_in_prev_month : $pay_day_2_setting;
+            $true_prev_payday_obj->setDate($true_prev_payday_obj->format('Y'), $true_prev_payday_obj->format('n'), $actual_pay_day_2_prev_month_day);
+        } elseif ($true_next_payday_obj == $pay_day_2_this_month) { // If next is 30th this month
+            $true_prev_payday_obj = $pay_day_1_this_month;
+        } else { // If next is 15th of next month
+            $true_prev_payday_obj = $pay_day_2_this_month;
+        }
+
+        // Calculate Pay Period Boundaries
+        $current_pay_period_end_date_obj = get_cutoff_sunday_before_payday($true_next_payday_obj);
+        $prev_pay_period_end_date_obj = get_cutoff_sunday_before_payday($true_prev_payday_obj);
+        $current_pay_period_start_date_obj = (clone $prev_pay_period_end_date_obj)->modify('+1 day');
         
-        // Ensure pay_day_1 and pay_day_2 are correctly handled for specific month lengths
-        // This logic for next_pay_date_obj needs to be careful if pay_day_1 or pay_day_2 > days in month
-        // For example, if pay_day_1 = 30 and month is Feb.
-        // The setDate might roll over. A safer way is to check.
-        $next_month_test = clone $next_pay_date_obj;
-        if ($next_pay_date_obj->format('j') != ($next_pay_date_obj->format('n') == $current_month ? ($current_day < $pay_day_1 ? $pay_day_1 : $actual_pay_day_2) : $pay_day_1) ) {
-             // Day rolled over, so set to last day of target month
-             if($next_pay_date_obj->format('n') != $current_month){ // next month case
-                $next_pay_date_obj->setDate($next_pay_date_obj->format('Y'), $next_pay_date_obj->format('n'), $pay_day_1);
-                if($next_pay_date_obj->format('j') != $pay_day_1) $next_pay_date_obj->setDate($next_pay_date_obj->format('Y'), $next_pay_date_obj->format('n'), 1)->modify('last day of this month');
-             } else { // current month case
-                $target_day = ($current_day < $pay_day_1 ? $pay_day_1 : $actual_pay_day_2);
-                 $next_pay_date_obj->setDate($current_year, $current_month, $target_day);
-                 if($next_pay_date_obj->format('j') != $target_day) $next_pay_date_obj->setDate($current_year, $current_month, 1)->modify('last day of this month');
-             }
-        }
-        
-        $prev_month_test_day = $prev_pay_date_obj->format('j');
-        $target_prev_day = ($current_day < $pay_day_1 ? ($pay_day_2 >= 28 ? intval($prev_pay_date_obj->format('t')) : $pay_day_2) : $pay_day_1);
-        if ($prev_month_test_day != $target_prev_day){
-             $prev_pay_date_obj->setDate($prev_pay_date_obj->format('Y'), $prev_pay_date_obj->format('n'), $target_prev_day);
-             if($prev_pay_date_obj->format('j') != $target_prev_day) $prev_pay_date_obj->setDate($prev_pay_date_obj->format('Y'), $prev_pay_date_obj->format('n'), 1)->modify('last day of this month');
-        }
+        $response["debug_pay_period_start"] = $current_pay_period_start_date_obj->format('Y-m-d');
+        $response["debug_pay_period_end"] = $current_pay_period_end_date_obj->format('Y-m-d');
+        $response["debug_true_next_payday"] = $true_next_payday_obj->format('Y-m-d');
+        $response["debug_true_prev_payday"] = $true_prev_payday_obj->format('Y-m-d');
 
 
-        $response["next_pay_date"] = $next_pay_date_obj->format('Y-m-d');
-        $response["debug_pay_period_start"] = $prev_pay_date_obj->format('Y-m-d');
-        $response["debug_pay_period_end"] = $next_pay_date_obj->format('Y-m-d'); // This is exclusive for query
-
-        // Sum hours_worked
+        // Sum hours_worked for the current pay period (inclusive start and end)
         $hours_stmt = $pdo->prepare("
             SELECT SUM(hours_worked) 
             FROM logged_hours 
-            WHERE log_date >= ? AND log_date < ?
+            WHERE log_date >= ? AND log_date <= ? 
         ");
-        $hours_stmt->execute([$response["debug_pay_period_start"], $response["debug_pay_period_end"]]);
+        $hours_stmt->execute([
+            $current_pay_period_start_date_obj->format('Y-m-d'), 
+            $current_pay_period_end_date_obj->format('Y-m-d')
+        ]);
         $total_hours = floatval($hours_stmt->fetchColumn() ?: 0);
         
         $gross_estimated_pay = $total_hours * $pay_rate;
@@ -200,9 +198,9 @@ try {
         $response["gross_estimated_pay"] = round($gross_estimated_pay, 2);
         $response["estimated_federal_tax"] = round($estimated_federal_tax, 2);
         $response["estimated_state_tax"] = round($estimated_state_tax, 2);
-        $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2); // This is NET pay
+        $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2);
     }
-
+    
     // Future Net Worth - always use the (potentially net) estimated_upcoming_pay
     $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
 

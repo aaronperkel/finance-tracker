@@ -13,23 +13,41 @@ $days_checked = 0;
 $default_entries_added = 0;
 
 try {
+    // 1. Define Job Start Date
+    $jobStartDate = new DateTime('2025-05-20'); // MODIFIED as per user request
+    $jobStartDate->setTime(0, 0, 0); // Normalize time
+
     // 2. Determine Date Range
     $endDate = new DateTime('yesterday');
     $endDate->setTime(0, 0, 0); // Normalize to start of day
 
-    $earliest_log_date_str = $pdo->query("SELECT MIN(log_date) FROM logged_hours")->fetchColumn();
-
-    $startDate = new DateTime();
-    if ($earliest_log_date_str) {
-        $startDate = new DateTime($earliest_log_date_str);
-    } else {
-        // If no hours logged, use first day of the current month
-        $startDate->setDate($startDate->format('Y'), $startDate->format('m'), 1);
+    // Determine initial start date from DB
+    $stmt = $pdo->query("SELECT MIN(log_date) as earliest_date FROM logged_hours");
+    $dbEarliestLogDateStr = $stmt->fetchColumn();
+    $dbEarliestLogDateObj = null;
+    if ($dbEarliestLogDateStr) {
+        $dbEarliestLogDateObj = new DateTime($dbEarliestLogDateStr);
+        $dbEarliestLogDateObj->setTime(0,0,0);
     }
-    $startDate->setTime(0, 0, 0); // Normalize to start of day
+
+    $firstDayOfCurrentMonth = new DateTime('first day of this month');
+    $firstDayOfCurrentMonth->setTime(0,0,0);
+
+    $calculatedStartDate;
+
+    if ($dbEarliestLogDateObj) {
+        // Logs exist, start from the later of jobStartDate or actual earliest log
+        $calculatedStartDate = ($dbEarliestLogDateObj > $jobStartDate) ? clone $dbEarliestLogDateObj : clone $jobStartDate;
+    } else {
+        // No logs exist, start from the later of jobStartDate or first day of current month
+        $calculatedStartDate = ($firstDayOfCurrentMonth > $jobStartDate) ? clone $firstDayOfCurrentMonth : clone $jobStartDate;
+    }
+
+    $startDate = $calculatedStartDate; // This $startDate is then used for the loop
+
 
     if ($startDate > $endDate) {
-        echo "<div class='message info'>No date range to process. Start date (" . $startDate->format('Y-m-d') . ") is after end date (" . $endDate->format('Y-m-d') . "). This can happen if the script is run on the 1st of the month with no prior logs, or if all logs are very recent.</div>";
+        echo "<div class='message info'>No date range to process. Effective start date (" . $startDate->format('Y-m-d') . ") is after end date (" . $endDate->format('Y-m-d') . "). This might be due to the job start date or no recent log activity.</div>";
     } else {
         $currentDate = clone $startDate;
 
