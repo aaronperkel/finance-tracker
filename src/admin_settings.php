@@ -140,6 +140,7 @@
         <span class="app-title">Finance App</span>
         <a href="dashboard.php">Dashboard</a>
         <a href="add_snapshot.php">Add Snapshot</a>
+        <a href="calendar_hours.php">Hours Calendar</a>
         <a href="admin_settings.php" class="active">Settings</a>
     </nav>
 
@@ -160,6 +161,14 @@
                     <label for="pay_day_2">Second Pay Day of Month (1-31):</label>
                     <input type="number" id="pay_day_2" name="pay_day_2" min="1" max="31" step="1" required>
                 </div>
+                <div>
+                    <label for="federal_tax_rate">Federal Tax Rate (%):</label>
+                    <input type="number" id="federal_tax_rate" name="federal_tax_rate" step="0.01" min="0" max="100" required>
+                </div>
+                <div>
+                    <label for="state_tax_rate">State Tax Rate (%):</label>
+                    <input type="number" id="state_tax_rate" name="state_tax_rate" step="0.01" min="0" max="100" required>
+                </div>
                 <button type="submit">Save Settings</button>
             </form>
             <div id="settings-feedback"></div>
@@ -173,6 +182,8 @@
             const payRateInput = document.getElementById('pay_rate');
             const payDay1Input = document.getElementById('pay_day_1');
             const payDay2Input = document.getElementById('pay_day_2');
+            const federalTaxRateInput = document.getElementById('federal_tax_rate');
+            const stateTaxRateInput = document.getElementById('state_tax_rate');
 
             // Fetch current settings on page load
             fetch('settings.php')
@@ -191,6 +202,8 @@
                     payRateInput.value = data.pay_rate || '';
                     payDay1Input.value = data.pay_day_1 || '';
                     payDay2Input.value = data.pay_day_2 || '';
+                    federalTaxRateInput.value = data.federal_tax_rate ? (parseFloat(data.federal_tax_rate) * 100).toFixed(2) : '0.00';
+                    stateTaxRateInput.value = data.state_tax_rate ? (parseFloat(data.state_tax_rate) * 100).toFixed(2) : '0.00';
                 })
                 .catch(error => {
                     feedbackDiv.textContent = 'Error loading settings: ' + error.message;
@@ -206,7 +219,9 @@
                 const settingsData = {
                     pay_rate: payRateInput.value,
                     pay_day_1: payDay1Input.value,
-                    pay_day_2: payDay2Input.value
+                    pay_day_2: payDay2Input.value,
+                    federal_tax_rate: (parseFloat(federalTaxRateInput.value) / 100).toFixed(4), // Store as decimal
+                    state_tax_rate: (parseFloat(stateTaxRateInput.value) / 100).toFixed(4)   // Store as decimal
                 };
 
                 // Basic client-side validation (though server is primary)
@@ -219,6 +234,13 @@
                 const pd2 = parseInt(settingsData.pay_day_2);
                 if (pd1 < 1 || pd1 > 31 || pd2 < 1 || pd2 > 31) {
                     feedbackDiv.textContent = 'Error: Pay days must be between 1 and 31.';
+                    feedbackDiv.className = 'error';
+                    return;
+                }
+                const fedTax = parseFloat(federalTaxRateInput.value);
+                const stateTax = parseFloat(stateTaxRateInput.value);
+                if (fedTax < 0 || fedTax > 100 || stateTax < 0 || stateTax > 100) {
+                    feedbackDiv.textContent = 'Error: Tax rates must be between 0 and 100%.';
                     feedbackDiv.className = 'error';
                     return;
                 }

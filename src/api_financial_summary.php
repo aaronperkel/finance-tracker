@@ -6,7 +6,11 @@ $response = [
     "current_net_worth" => 0,
     "total_cash_on_hand" => 0,
     "receivables_balance" => 0,
-    "estimated_upcoming_pay" => 0,
+    "total_liabilities" => 0, // Added for Total Owed
+    "gross_estimated_pay" => 0, // Optional new field
+    "estimated_federal_tax" => 0, // Optional new field
+    "estimated_state_tax" => 0,   // Optional new field
+    "estimated_upcoming_pay" => 0, // This will be NET pay
     "next_pay_date" => null,
     "future_net_worth" => 0,
     "net_worth_history" => [],
@@ -53,6 +57,16 @@ try {
         ");
         $stmt->execute([$latest_snapshot_id]);
         $response["receivables_balance"] = floatval($stmt->fetchColumn() ?: 0);
+
+        // Total Liabilities (Total Owed)
+        $stmt = $pdo->prepare("
+            SELECT SUM(b.balance) as total_liabilities
+            FROM balances b
+            JOIN accounts a ON a.id = b.account_id
+            WHERE b.snapshot_id = ? AND a.type = 'Liability'
+        ");
+        $stmt->execute([$latest_snapshot_id]);
+        $response["total_liabilities"] = floatval($stmt->fetchColumn() ?: 0);
     }
 
     // Net Worth History
@@ -75,16 +89,28 @@ try {
 
 
     // Estimated Upcoming Pay and Next Pay Date
-    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('pay_rate', 'pay_day_1', 'pay_day_2')");
+    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings 
+                                  WHERE setting_key IN ('pay_rate', 'pay_day_1', 'pay_day_2', 'federal_tax_rate', 'state_tax_rate')");
     $app_settings = [];
     while ($row = $settings_stmt->fetch(PDO::FETCH_ASSOC)) {
         $app_settings[$row['setting_key']] = $row['setting_value'];
     }
 
+    // Initialize pay-related fields in case settings are not fully available
+    $response["gross_estimated_pay"] = 0.00;
+    $response["estimated_federal_tax"] = 0.00;
+    $response["estimated_state_tax"] = 0.00;
+    $response["estimated_upcoming_pay"] = 0.00;
+
+
     if (isset($app_settings['pay_rate'], $app_settings['pay_day_1'], $app_settings['pay_day_2'])) {
         $pay_rate = floatval($app_settings['pay_rate']);
         $pay_day_1 = intval($app_settings['pay_day_1']);
         $pay_day_2 = intval($app_settings['pay_day_2']);
+        
+        // Fetch tax rates, default to 0 if not set
+        $federal_tax_rate_value = isset($app_settings['federal_tax_rate']) ? floatval($app_settings['federal_tax_rate']) : 0;
+        $state_tax_rate_value = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
 
         $current_date = new DateTime();
         $current_day = intval($current_date->format('j'));
@@ -165,11 +191,20 @@ try {
         ");
         $hours_stmt->execute([$response["debug_pay_period_start"], $response["debug_pay_period_end"]]);
         $total_hours = floatval($hours_stmt->fetchColumn() ?: 0);
-        $response["estimated_upcoming_pay"] = round($total_hours * $pay_rate, 2);
+        
+        $gross_estimated_pay = $total_hours * $pay_rate;
+        $estimated_federal_tax = $gross_estimated_pay * $federal_tax_rate_value;
+        $estimated_state_tax = $gross_estimated_pay * $state_tax_rate_value;
+        $net_estimated_pay = $gross_estimated_pay - $estimated_federal_tax - $estimated_state_tax;
+
+        $response["gross_estimated_pay"] = round($gross_estimated_pay, 2);
+        $response["estimated_federal_tax"] = round($estimated_federal_tax, 2);
+        $response["estimated_state_tax"] = round($estimated_state_tax, 2);
+        $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2); // This is NET pay
     }
 
-    // Future Net Worth
-    $response["future_net_worth"] = $response["current_net_worth"] + $response["estimated_upcoming_pay"];
+    // Future Net Worth - always use the (potentially net) estimated_upcoming_pay
+    $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
 
     echo json_encode($response);
 

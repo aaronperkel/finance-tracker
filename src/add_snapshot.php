@@ -227,6 +227,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
         <span class="app-title">Finance App</span>
         <a href="dashboard.php">Dashboard</a>
         <a href="add_snapshot.php" class="active">Add Snapshot</a>
+        <a href="calendar_hours.php">Hours Calendar</a>
         <a href="admin_settings.php">Settings</a>
     </nav>
 

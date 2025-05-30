@@ -166,7 +166,8 @@
         <span class="app-title">Finance App</span>
         <a href="dashboard.php" class="active">Dashboard</a>
         <a href="add_snapshot.php">Add Snapshot</a>
-        <a href="admin_settings.php">Settings</a> <!-- Updated link -->
+        <a href="calendar_hours.php">Hours Calendar</a>
+        <a href="admin_settings.php">Settings</a>
     </nav>
 
     <div class="container">
@@ -180,6 +181,7 @@
                     <div>Current Net Worth: <span id="current-net-worth" class="currency">N/A</span></div>
                     <div>Total Cash on Hand: <span id="total-cash" class="currency">N/A</span></div>
                     <div>Receivables: <span id="receivables-balance" class="currency">N/A</span></div>
+                    <div><strong>Total Owed:</strong> <span id="total-owed" class="currency">0.00</span></div>
                     <div>Estimated Next Paycheck: <span id="next-paycheck-amount" class="currency">N/A</span> on Next Pay Date: <span id="next-paycheck-date">N/A</span></div>
                     <div>Future Net Worth (after next paycheck): <span id="future-net-worth" class="currency">N/A</span></div>
                     <div class="debug-info">
@@ -245,6 +247,7 @@
                     document.getElementById('current-net-worth').textContent = formatCurrency(data.current_net_worth);
                     document.getElementById('total-cash').textContent = formatCurrency(data.total_cash_on_hand);
                     document.getElementById('receivables-balance').textContent = formatCurrency(data.receivables_balance);
+                    document.getElementById('total-owed').textContent = formatCurrency(data.total_liabilities !== undefined ? data.total_liabilities : 0);
                     document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
                     document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'N/A';
                     document.getElementById('future-net-worth').textContent = formatCurrency(data.future_net_worth);

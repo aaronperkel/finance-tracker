@@ -3,7 +3,7 @@ require_once 'db.php'; // 1. Include db.php
 
 header('Content-Type: application/json'); // 4. Set Content-Type header
 
-$allowed_keys = ['pay_rate', 'pay_day_1', 'pay_day_2'];
+$allowed_keys = ['pay_rate', 'pay_day_1', 'pay_day_2', 'federal_tax_rate', 'state_tax_rate'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // 2. Handle GET requests
@@ -58,6 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $errors[] = "Invalid value for $key. Must be an integer between 1 and 31.";
                 } else {
                     $valid_settings[$key] = intval($value);
+                }
+                break;
+            case 'federal_tax_rate':
+            case 'state_tax_rate':
+                if (!is_numeric($value) || $value < 0 || $value > 1) {
+                    $errors[] = "Invalid value for $key. Must be a number between 0.00 and 1.00 (e.g., 0.15 for 15%).";
+                } else {
+                    // Ensure it's stored with a consistent precision, e.g., 4 decimal places
+                    $valid_settings[$key] = number_format((float)$value, 4, '.', ''); 
                 }
                 break;
         }

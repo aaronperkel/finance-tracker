@@ -66,7 +66,7 @@ To run this application, you will need:
 *   **Review and Customize (Recommended):**
     *   Before importing, open `initial_data.sql` with a text editor.
     *   **Accounts:** Review the list of accounts (e.g., 'Truist Checking', 'Capital One Credit'). Modify the names or add/remove accounts to accurately reflect your personal financial setup. Ensure the `type` ('Asset' or 'Liability') is correct for each.
-    *   **App Settings:** Verify that the default `pay_rate` ('20.00'), `pay_day_1` ('15'), and `pay_day_2` ('30') are suitable for your needs. Adjust these values if necessary.
+    *   **App Settings:** Verify that the default `pay_rate` ('20.00'), `pay_day_1` ('15'), `pay_day_2` ('30'), `federal_tax_rate` ('0.15' for 15%), and `state_tax_rate` ('0.03' for 3%) are suitable for your needs. Remember that tax rates are stored as decimals (e.g., 0.15 represents 15%). Adjust these values if necessary.
 *   **Import Data:**
     *   Once you've reviewed and (if necessary) customized the file, import `initial_data.sql` into your database using a MySQL client.
     *   Example using the MySQL command line (assuming the file is in the root):
@@ -99,11 +99,12 @@ The dashboard provides an overview of your financial situation.
 
 *   **Financial Summary:** This section at the top gives you key figures:
     *   **Current Net Worth:** Calculated as (Total Assets - Total Liabilities) based on your most recent financial snapshot.
-    *   **Total Cash on Hand:** The sum of balances from accounts specifically designated as primary cash/savings accounts. Currently, these are hardcoded in `src/api_financial_summary.php` as "Truist Checking", "Capital One Savings", and "Apple Savings". This might become configurable in a future update.
+    *   **Total Cash on Hand:** The sum of balances from accounts specifically designated as primary cash/savings accounts. Currently, these are hardcoded in `src/api_financial_summary.php` as "Truist Checking", "Capital One Savings", and "Apple Savings". This may become configurable in a future update.
     *   **Receivables:** The balance of your "Receivables" account from the latest snapshot, representing money owed to you.
-    *   **Estimated Next Paycheck:** An estimation of your upcoming pay, calculated from hours logged in the current pay period multiplied by your `pay_rate`. The expected date of this paycheck is also displayed.
-    *   **Future Net Worth:** Your Current Net Worth plus the Estimated Next Paycheck, giving a projection.
-    *   *(You might also see "Debug Pay Period" start and end dates, which are for development and verification purposes).*
+    *   **Total Owed:** The sum of all your liabilities from the latest snapshot.
+    *   **Estimated Next Paycheck:** This is an *estimated net pay* after basic federal and state tax withholdings have been deducted from the gross pay. The gross pay is calculated from hours logged in the current pay period multiplied by your `pay_rate`. The tax rates used for this estimation are configurable in the Application Settings. The expected date of this paycheck is also displayed.
+    *   **Future Net Worth:** Your Current Net Worth plus the Estimated Next Paycheck (net pay), giving a projection.
+    *   *(You might also see "Debug Pay Period" start and end dates, which are for development and verification purposes, and the API also returns gross pay and estimated tax amounts, though they are not currently displayed on the dashboard UI).*
 *   **Logging Work Hours:**
     *   Use the "Log Worked Hours" form on the dashboard.
     *   Select the `Date` you performed the work.
@@ -113,15 +114,17 @@ The dashboard provides an overview of your financial situation.
     *   This chart visually displays your net worth history. Each point on the line graph corresponds to a financial snapshot you've saved, showing the trend of your net worth over time.
 
 ### 4. Managing Application Settings
-Application settings like your hourly pay rate and paydays are stored in the `app_settings` table in the database.
+Application settings such as your hourly pay rate, paydays, and tax rates are stored in the `app_settings` table in the database.
 
 *   **Initial Setup:** These are initially set when you import `initial_data.sql`.
 *   **Changing Settings After Setup:**
-    *   **Direct Database Edit (Recommended for now):** The simplest way to change these settings is to directly edit the rows in the `app_settings` table using a database management tool like phpMyAdmin.
-        *   Open your database.
-        *   Select the `app_settings` table.
-        *   Edit the `setting_value` for `pay_rate`, `pay_day_1`, or `pay_day_2`.
-    *   **API (Advanced):** The script `src/settings.php` provides an API to GET and POST settings. You can use a tool like Postman or `curl` to interact with this API if you are familiar with such tools. A user interface for these settings directly within the application is planned for a future update (this was Step 3 of the project plan).
+    *   **Using the Settings Page:** Navigate to `src/admin_settings.php` (link available in the navigation bar). Here you can update:
+        *   `Pay Rate (per hour)`
+        *   `First Pay Day of Month (1-31)`
+        *   `Second Pay Day of Month (1-31)`
+        *   `Federal Tax Rate (%)`: Enter as a percentage (e.g., 15 for 15%). It will be stored as a decimal (e.g., 0.15).
+        *   `State Tax Rate (%)`: Enter as a percentage (e.g., 3 for 3%). It will be stored as a decimal (e.g., 0.03).
+    *   **Direct Database Edit (Advanced):** You can also directly edit the values in the `app_settings` table using a database management tool (like phpMyAdmin), but using the settings page is recommended.
 
 ---
 Remember to keep your `.env` file secure and never commit it to a public version control repository.
