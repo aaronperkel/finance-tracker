@@ -21,8 +21,10 @@ $response = [
 try {
     // 3. Fetch Data and Perform Calculations
 
-    // Get latest snapshot ID
-    $latest_snapshot_id = $pdo->query("SELECT id FROM snapshots ORDER BY snapshot_date DESC LIMIT 1")->fetchColumn();
+    // Get latest snapshot ID (Mandated Query)
+    $latest_snapshot_id_stmt = $pdo->query("SELECT id FROM snapshots ORDER BY snapshot_date DESC, id DESC LIMIT 1");
+    $latest_snapshot_id = $latest_snapshot_id_stmt->fetchColumn();
+    $response['debug_latest_snapshot_id_used'] = $latest_snapshot_id; // Debug line
 
     if ($latest_snapshot_id) {
         // Current Net Worth
@@ -83,13 +85,13 @@ try {
         ORDER BY s.snapshot_date
     ");
     $response["net_worth_history"] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-     foreach ($response["net_worth_history"] as &$item) {
+    foreach ($response["net_worth_history"] as &$item) {
         $item["networth"] = floatval($item["networth"]);
     }
 
 
     // Estimated Upcoming Pay and Next Pay Date
-    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings
+    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings 
                                   WHERE setting_key IN ('pay_rate', 'pay_day_1', 'pay_day_2', 'federal_tax_rate', 'state_tax_rate')");
     $app_settings = [];
     while ($row = $settings_stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -104,9 +106,10 @@ try {
     $response["is_pay_day"] = false; // Initialize is_pay_day
 
     // Helper function for pay period cutoff
-    function get_cutoff_sunday_before_payday(DateTime $payDateObj): DateTime {
+    function get_cutoff_sunday_before_payday(DateTime $payDateObj): DateTime
+    {
         $cutoff = clone $payDateObj;
-        $cutoff->setTime(0,0,0); // Normalize time
+        $cutoff->setTime(0, 0, 0); // Normalize time
         // If payday is Sunday, 'previous sunday' goes to week before. We want current Sunday if payday is Sun.
         // So, if it's not already Sunday, then find previous Sunday.
         // No, the logic should be: "the Sunday *before* payday"
@@ -128,23 +131,23 @@ try {
         $state_tax_rate_value = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
 
         $current_date_time = new DateTime();
-        $current_date_time->setTime(0,0,0); // Normalize current date for comparisons
+        $current_date_time->setTime(0, 0, 0); // Normalize current date for comparisons
 
         // $current_day_of_month = (int)$current_date_time->format('j'); // For direct day comparison if needed later
-        $current_year = (int)$current_date_time->format('Y');
-        $current_month = (int)$current_date_time->format('n');
+        $current_year = (int) $current_date_time->format('Y');
+        $current_month = (int) $current_date_time->format('n');
 
         // --- Determine Payday Objects for Current Month ---
         $payday1_current_month = new DateTime();
-        $payday1_current_month->setTime(0,0,0)->setDate($current_year, $current_month, $pay_day_1_setting);
-        if ((int)$payday1_current_month->format('j') !== $pay_day_1_setting) { // Handle invalid dates like Feb 30
+        $payday1_current_month->setTime(0, 0, 0)->setDate($current_year, $current_month, $pay_day_1_setting);
+        if ((int) $payday1_current_month->format('j') !== $pay_day_1_setting) { // Handle invalid dates like Feb 30
             $payday1_current_month->setDate($current_year, $current_month, 1)->modify('last day of this month');
         }
 
-        $last_day_of_current_month_num = (int)$current_date_time->format('t');
+        $last_day_of_current_month_num = (int) $current_date_time->format('t');
         $actual_pay_day_2_curr_month_day = ($pay_day_2_setting > $last_day_of_current_month_num) ? $last_day_of_current_month_num : $pay_day_2_setting;
         $payday2_current_month = new DateTime();
-        $payday2_current_month->setTime(0,0,0)->setDate($current_year, $current_month, $actual_pay_day_2_curr_month_day);
+        $payday2_current_month->setTime(0, 0, 0)->setDate($current_year, $current_month, $actual_pay_day_2_curr_month_day);
 
         // --- Determine True Next Payday ---
         $true_next_payday_obj;
@@ -156,9 +159,9 @@ try {
             // Both paydays of current month have passed, so next is payday 1 of next month
             $next_month_date = (clone $current_date_time)->modify('+1 month');
             $true_next_payday_obj = new DateTime();
-            $true_next_payday_obj->setTime(0,0,0)->setDate((int)$next_month_date->format('Y'), (int)$next_month_date->format('n'), $pay_day_1_setting);
-            if ((int)$true_next_payday_obj->format('j') !== $pay_day_1_setting) {
-                $true_next_payday_obj->setDate((int)$next_month_date->format('Y'), (int)$next_month_date->format('n'), 1)->modify('last day of this month');
+            $true_next_payday_obj->setTime(0, 0, 0)->setDate((int) $next_month_date->format('Y'), (int) $next_month_date->format('n'), $pay_day_1_setting);
+            if ((int) $true_next_payday_obj->format('j') !== $pay_day_1_setting) {
+                $true_next_payday_obj->setDate((int) $next_month_date->format('Y'), (int) $next_month_date->format('n'), 1)->modify('last day of this month');
             }
         }
         $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
@@ -169,10 +172,10 @@ try {
         if ($true_next_payday_obj == $payday1_current_month) {
             // Next payday is the 1st of current month, so previous was 2nd payday of previous month
             $prev_month_date = (clone $current_date_time)->modify('-1 month');
-            $last_day_of_prev_month_num = (int)$prev_month_date->format('t');
+            $last_day_of_prev_month_num = (int) $prev_month_date->format('t');
             $actual_pay_day_2_prev_month_day = ($pay_day_2_setting > $last_day_of_prev_month_num) ? $last_day_of_prev_month_num : $pay_day_2_setting;
             $true_prev_payday_obj = new DateTime();
-            $true_prev_payday_obj->setTime(0,0,0)->setDate((int)$prev_month_date->format('Y'), (int)$prev_month_date->format('n'), $actual_pay_day_2_prev_month_day);
+            $true_prev_payday_obj->setTime(0, 0, 0)->setDate((int) $prev_month_date->format('Y'), (int) $prev_month_date->format('n'), $actual_pay_day_2_prev_month_day);
         } elseif ($true_next_payday_obj == $payday2_current_month) {
             // Next payday is the 2nd of current month, so previous was 1st payday of current month
             $true_prev_payday_obj = clone $payday1_current_month;
@@ -193,7 +196,7 @@ try {
 
         // Define jobStartDate
         $jobStartDate = new DateTime('2025-05-20'); // Ensure this matches other scripts
-        $jobStartDate->setTime(0,0,0);
+        $jobStartDate->setTime(0, 0, 0);
 
         // Determine if today is a payday
         if ($current_date_time == $payday1_current_month || $current_date_time == $payday2_current_month) {
@@ -215,14 +218,14 @@ try {
             $logged_hours_for_period_raw = $stmt_logged->fetchAll(PDO::FETCH_ASSOC);
             $explicitly_logged_hours = [];
             foreach ($logged_hours_for_period_raw as $row) {
-                $explicitly_logged_hours[$row['log_date']] = (float)$row['hours_worked'];
+                $explicitly_logged_hours[$row['log_date']] = (float) $row['hours_worked'];
             }
 
             $total_hours_for_period = 0.0;
             $loop_date = clone $current_pay_period_start_date_obj;
             while ($loop_date <= $current_pay_period_end_date_obj) {
                 $date_str = $loop_date->format('Y-m-d');
-                $day_of_week = (int)$loop_date->format('N'); // 1 (Mon) to 7 (Sun)
+                $day_of_week = (int) $loop_date->format('N'); // 1 (Mon) to 7 (Sun)
 
                 if ($loop_date >= $jobStartDate && $day_of_week >= 1 && $day_of_week <= 5) { // Is a relevant workday
                     if (isset($explicitly_logged_hours[$date_str])) {
