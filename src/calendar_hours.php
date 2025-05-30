@@ -206,7 +206,7 @@
 
     <nav class="navbar">
         <span class="app-title">Finance App</span>
-        <a href="dashboard.php">Dashboard</a>
+        <a href="index.php">Dashboard</a>
         <a href="add_snapshot.php">Add Snapshot</a>
         <a href="calendar_hours.php" class="active">Hours Calendar</a>
         <a href="admin_settings.php">Settings</a>

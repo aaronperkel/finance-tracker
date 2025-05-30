@@ -1,29 +1,38 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Financial Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <style>
         /* Basic Reset & Body Styling */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #eef1f5; /* Lighter gray background */
+            background-color: #eef1f5;
+            /* Lighter gray background */
             color: #333;
             line-height: 1.6;
         }
 
         /* Navigation Bar */
         .navbar {
-            background-color: #2c3e50; /* Dark blue */
+            background-color: #2c3e50;
+            /* Dark blue */
             color: #fff;
             padding: 1rem 2rem;
             margin-bottom: 20px;
             display: flex;
             justify-content: flex-start;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
+
         .navbar a {
             color: #fff;
             text-decoration: none;
@@ -32,88 +41,144 @@
             border-radius: 4px;
             transition: background-color 0.3s ease;
         }
-        .navbar a:hover, .navbar a.active {
-            background-color: #3498db; /* Brighter blue for hover/active */
+
+        .navbar a:hover,
+        .navbar a.active {
+            background-color: #3498db;
+            /* Brighter blue for hover/active */
         }
+
         .navbar .app-title {
             font-size: 1.5rem;
             font-weight: bold;
-            margin-right: auto; /* Pushes other links to the right if needed, or use justify-content */
+            margin-right: auto;
+            /* Pushes other links to the right if needed, or use justify-content */
         }
 
         /* Main Content Container */
         .container {
-            padding: 0 20px; /* Add some horizontal padding to the main content area */
+            padding: 0 20px 20px 20px;
+            /* Added bottom padding */
+            max-width: 1400px;
+            /* Constrain overall width for desktop */
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        h1.page-title { /* Specific styling for the main H1 */
+        h1.page-title {
+            /* Specific styling for the main H1 */
             text-align: center;
             color: #2c3e50;
             margin-bottom: 20px;
         }
+
         h2 {
-            color: #34495e; /* Slightly lighter blue for section headers */
-            border-bottom: 2px solid #bdc3c7; /* Light gray border */
+            color: #34495e;
+            /* Slightly lighter blue for section headers */
+            border-bottom: 2px solid #bdc3c7;
+            /* Light gray border */
             padding-bottom: 10px;
-            margin-top: 10px; /* Ensure h2 has margin-top if it's the first child of a section */
+            margin-top: 10px;
+            /* Ensure h2 has margin-top if it's the first child of a section */
             margin-bottom: 15px;
         }
 
-        /* Layout for sections - Flexbox for side-by-side summary and logging */
+        /* Layout for sections */
         .main-layout {
-            display: flex;
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
-            gap: 20px; /* Space between flex items */
+            /*display: flex; /* Can be re-enabled if a two-column layout is desired for summary/other */
+            /*flex-wrap: wrap; */
+            gap: 20px;
             margin-bottom: 20px;
         }
-        .main-layout > div { /* Direct children of main-layout */
+
+        .main-layout>div,
+        #chart-container {
+            /* Apply common styling to section containers */
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+            /* Ensure spacing when stacked */
         }
-        #financial-summary-container { flex: 1; min-width: 300px; } /* Adjusted to flex: 1, was 2 */
-        /* #hour-logging-container { flex: 1; min-width: 280px; }    REMOVED */
+
+        #financial-summary-container {
+            /* flex: 1; /* Only if .main-layout is flex and has other items */
+            min-width: 300px;
+        }
 
         /* Individual Sections Styling */
-        #financial-summary div { margin-bottom: 12px; }
-        #financial-summary span { font-weight: bold; color: #2980b9; }
-        .currency::before { content: "$"; }
-        .debug-info { font-size: 0.85em; color: #7f8c8d; margin-top: 15px; }
-        #payday-message-container { /* Style for the Pay Day! message */
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #27ae60; /* Green */
-            text-align: center;
-            padding: 10px;
-            background-color: #e6ffe6;
-            border: 1px solid #b3ffb3;
-            border-radius: 5px;
+        #financial-summary div {
             margin-bottom: 12px;
+        }
+
+        #financial-summary span {
+            font-weight: bold;
+            color: #2980b9;
+        }
+
+        .currency::before {
+            content: "$";
+        }
+
+        .debug-info {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-top: 15px;
+        }
+
+        #payday-message-container {
+            background-color: #e6ffed;
+            /* Light minty green */
+            color: #004d00;
+            /* Darker green text */
+            padding: 12px 15px;
+            border: 1px solid #b2dfdb;
+            /* Subtle teal/green border */
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            /* Slightly larger font */
+            margin-bottom: 12px;
+            /* Consistent with other div spacing */
+            /* display: none; /* Managed by JS */
+            margin: auto;
+            width: 75%;
         }
 
         /* Form elements */
         label {
             display: block;
             margin-bottom: 6px;
-            font-weight: 600; /* Slightly bolder labels */
+            font-weight: 600;
+            /* Slightly bolder labels */
             color: #555;
         }
-        input[type="date"], input[type="number"] {
-            width: 100%; /* Full width of parent */
+
+        input[type="date"],
+        input[type="number"] {
+            width: 100%;
+            /* Full width of parent */
             padding: 10px;
             margin-bottom: 12px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            box-sizing: border-box; /* Important for width calculation */
+            box-sizing: border-box;
+            /* Important for width calculation */
             transition: border-color 0.3s ease;
         }
-        input[type="date"]:focus, input[type="number"]:focus {
-            border-color: #3498db; /* Highlight focus */
+
+        input[type="date"]:focus,
+        input[type="number"]:focus {
+            border-color: #3498db;
+            /* Highlight focus */
             outline: none;
         }
+
         button[type="submit"] {
-            background-color: #27ae60; /* Green */
+            background-color: #27ae60;
+            /* Green */
             color: white;
             padding: 10px 15px;
             border: none;
@@ -121,61 +186,90 @@
             cursor: pointer;
             font-size: 16px;
             transition: background-color 0.3s ease;
-            width: 100%; /* Make button full width */
+            width: 100%;
+            /* Make button full width */
         }
-        button[type="submit"]:hover { background-color: #229954; /* Darker green */ }
+
+        button[type="submit"]:hover {
+            background-color: #229954;
+            /* Darker green */
+        }
 
         /* Feedback Messages */
-        #log-hours-feedback, #summary-error {
+        #log-hours-feedback,
+        #summary-error {
             margin-top: 10px;
             padding: 10px;
             border-radius: 4px;
             font-weight: bold;
         }
-        #log-hours-feedback.success, #summary-error.success {
-            color: #1d6f42; /* Darker green for text */
-            background-color: #d4edda; /* Light green background */
+
+        #log-hours-feedback.success,
+        #summary-error.success {
+            color: #1d6f42;
+            /* Darker green for text */
+            background-color: #d4edda;
+            /* Light green background */
             border: 1px solid #c3e6cb;
         }
-        #log-hours-feedback.error, #summary-error.error {
-            color: #721c24; /* Darker red for text */
-            background-color: #f8d7da; /* Light red background */
+
+        #log-hours-feedback.error,
+        #summary-error.error {
+            color: #721c24;
+            /* Darker red for text */
+            background-color: #f8d7da;
+            /* Light red background */
             border: 1px solid #f5c6cb;
         }
 
         /* Chart Container */
         #chart-container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            height: 450px; /* Ensure enough height for the chart */
+            position: relative;
+            max-height: 500px;
+            aspect-ratio: 2 / 1;
+            margin-left: auto;
+            margin-right: auto;
+            overflow: hidden;
         }
-        #nwChart { max-height: 400px; }
+
+        #nwChart {
+            /* Canvas element itself should not have style for max-height if container controls it */
+        }
 
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            .main-layout {
-                flex-direction: column; /* Stack summary and logging on smaller screens */
-            }
+
+            /* .main-layout {
+                flex-direction: column; 
+            } */
             .navbar {
                 flex-direction: column;
                 align-items: flex-start;
             }
+
             .navbar a {
                 margin-bottom: 5px;
                 width: 100%;
                 text-align: left;
             }
-             .navbar .app-title { margin-bottom: 10px; }
+
+            .navbar .app-title {
+                margin-bottom: 10px;
+            }
+
+            #chart-container {
+                aspect-ratio: 1 / 1;
+                /* More square on smaller screens */
+            }
         }
     </style>
 </head>
+
 <body>
 
     <nav class="navbar">
         <span class="app-title">Finance App</span>
-        <a href="dashboard.php" class="active">Dashboard</a>
+        <a href="index.php" class="active">Dashboard</a>
         <a href="add_snapshot.php">Add Snapshot</a>
         <a href="calendar_hours.php">Hours Calendar</a>
         <a href="admin_settings.php">Settings</a>
@@ -189,29 +283,31 @@
             <div id="financial-summary-container">
                 <h2>Summary</h2>
                 <div id="financial-summary">
+                    <div id="payday-message-container" style="display: none;">Pay Day!</div>
                     <div>Current Net Worth: <span id="current-net-worth" class="currency">N/A</span></div>
                     <div>Total Cash on Hand: <span id="total-cash" class="currency">N/A</span></div>
                     <div>Receivables: <span id="receivables-balance" class="currency">N/A</span></div>
                     <div><strong>Total Owed:</strong> <span id="total-owed" class="currency">0.00</span></div>
 
-                    <div id="payday-message-container" style="display: none;">Pay Day!</div>
                     <div id="next-paycheck-line">
                         Estimated Next Paycheck: <span id="next-paycheck-amount" class="currency">N/A</span>
                         on Next Pay Date: <span id="next-paycheck-date">N/A</span>
                     </div>
 
-                    <div id="future-net-worth-line">Future Net Worth (after next paycheck): <span id="future-net-worth" class="currency">N/A</span></div>
-                    <div class="debug-info">
+                    <div id="future-net-worth-line">Future Net Worth (after next paycheck): <span id="future-net-worth"
+                            class="currency">N/A</span></div>
+                    <!-- <div class="debug-info">
                         Debug Pay Period: <span id="debug-pay-start">N/A</span> to <span id="debug-pay-end">N/A</span>
-                    </div>
+                    </div> -->
                 </div>
             </div>
-            <!-- HOUR LOGGING CONTAINER REMOVED -->
+            <!-- HOUR LOGGING CONTAINER REMOVED, financial-summary-container is now direct child of .container if .main-layout is not flex -->
         </div>
 
+        <!-- Chart container is now a direct child of .container, styled by .main-layout > div selector -->
         <div id="chart-container">
             <h2>Net Worth Over Time</h2>
-            <canvas id="nwChart"></canvas> <!-- Removed fixed width/height, rely on CSS/options -->
+            <canvas id="nwChart"></canvas>
         </div>
     </div>
 
@@ -235,7 +331,7 @@
                         return response.json().then(errData => {
                             throw new Error(`HTTP error ${response.status}: ${errData.error || response.statusText}`);
                         }).catch(() => {
-                             throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
                         });
                     }
                     return response.json();
@@ -270,8 +366,8 @@
 
                     document.getElementById('future-net-worth').textContent = formatCurrency(data.future_net_worth);
 
-                    document.getElementById('debug-pay-start').textContent = data.debug_pay_period_start || 'N/A';
-                    document.getElementById('debug-pay-end').textContent = data.debug_pay_period_end || 'N/A';
+                    // document.getElementById('debug-pay-start').textContent = data.debug_pay_period_start || 'N/A';
+                    // document.getElementById('debug-pay-end').textContent = data.debug_pay_period_end || 'N/A';
 
                     const labels = data.net_worth_history.map(r => r.date);
                     const vals = data.net_worth_history.map(r => parseFloat(r.networth));
@@ -312,4 +408,5 @@
         fetchFinancialData();
     </script>
 </body>
+
 </html>
