@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sid = $pdo->lastInsertId();
 
         if (empty($_POST['balance']) || !is_array($_POST['balance'])) {
-            throw new Exception("No balance data submitted.");
+             throw new Exception("No balance data submitted.");
         }
 
         $stmt_balance = $pdo->prepare(
@@ -74,18 +74,12 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
 ?>
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Add Snapshot - Finance App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         /* Basic Reset & Body Styling - Consistent with dashboard.php */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #eef1f5;
@@ -102,9 +96,8 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             display: flex;
             justify-content: flex-start;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
         .navbar a {
             color: #fff;
             text-decoration: none;
@@ -113,12 +106,9 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             border-radius: 4px;
             transition: background-color 0.3s ease;
         }
-
-        .navbar a:hover,
-        .navbar a.active {
+        .navbar a:hover, .navbar a.active {
             background-color: #3498db;
         }
-
         .navbar .app-title {
             font-size: 1.5rem;
             font-weight: bold;
@@ -127,8 +117,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
 
         /* Main Content Container */
         .container {
-            padding: 0 20px 20px 20px;
-            /* Added bottom padding */
+            padding: 0 20px 20px 20px; /* Added bottom padding */
             max-width: 800px;
             margin: 0 auto;
         }
@@ -144,12 +133,10 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             background-color: #fff;
             padding: 25px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-
-        .form-container div.form-group {
-            /* Grouping for label + input */
-            margin-bottom: 15px;
+        .form-container div.form-group { /* Grouping for label + input */
+             margin-bottom: 15px;
         }
 
 
@@ -160,9 +147,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             font-weight: 600;
             color: #555;
         }
-
-        input[type="date"],
-        input[type="number"] {
+        input[type="date"], input[type="number"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #ccc;
@@ -171,16 +156,12 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             transition: border-color 0.3s ease;
             font-size: 1rem;
         }
-
-        input[type="date"]:focus,
-        input[type="number"]:focus {
+        input[type="date"]:focus, input[type="number"]:focus {
             border-color: #3498db;
             outline: none;
         }
-
         button[type="submit"] {
-            background-color: #27ae60;
-            /* Green */
+            background-color: #27ae60; /* Green */
             color: white;
             padding: 12px 18px;
             border: none;
@@ -189,80 +170,56 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
             font-size: 1rem;
             transition: background-color 0.3s ease;
             width: 100%;
-            margin-top: 10px;
-            /* Space above button */
+            margin-top: 10px; /* Space above button */
         }
-
-        button[type="submit"]:hover {
-            background-color: #229954;
-        }
+        button[type="submit"]:hover { background-color: #229954; }
 
         /* Table Styling */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
-            /* Space below table */
+            margin-bottom: 20px; /* Space below table */
         }
-
-        th,
-        td {
+        th, td {
             text-align: left;
-            padding: 12px;
-            /* Increased padding */
-            border-bottom: 1px solid #ddd;
-            /* Lighter border */
+            padding: 12px; /* Increased padding */
+            border-bottom: 1px solid #ddd; /* Lighter border */
         }
-
         th {
-            background-color: #f9f9f9;
-            /* Light background for headers */
+            background-color: #f9f9f9; /* Light background for headers */
             color: #333;
             font-weight: 600;
         }
-
-        td:first-child {
-            /* Account name column */
+        td:first-child { /* Account name column */
             width: 60%;
         }
-
-        td:last-child {
-            /* Balance input column */
+        td:last-child { /* Balance input column */
             width: 40%;
         }
-
         tr:hover {
-            background-color: #f5f5f5;
-            /* Hover effect for rows */
+             background-color: #f5f5f5; /* Hover effect for rows */
         }
 
         /* Feedback Messages */
         .feedback-message {
-            margin-top: 0;
-            /* Reset margin as it's inside form-container */
-            margin-bottom: 20px;
-            /* Space below feedback if it's shown before form */
+            margin-top: 0; /* Reset margin as it's inside form-container */
+            margin-bottom: 20px; /* Space below feedback if it's shown before form */
             padding: 12px;
             border-radius: 4px;
             font-weight: bold;
             text-align: center;
         }
-
         .feedback-message.success {
             color: #1d6f42;
             background-color: #d4edda;
             border: 1px solid #c3e6cb;
         }
-
         .feedback-message.error {
             color: #721c24;
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
         }
-
-        .feedback-message:empty {
-            display: none;
-        }
+        .feedback-message:empty { display: none; }
 
 
         /* Responsive adjustments */
@@ -271,48 +228,20 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
                 flex-direction: column;
                 align-items: flex-start;
             }
-
             .navbar a {
                 margin-bottom: 5px;
                 width: 100%;
                 text-align: left;
             }
-
-            .navbar .app-title {
-                margin-bottom: 10px;
-            }
-
-            .container {
-                padding: 0 15px 15px 15px;
-            }
-
-            td:first-child,
-            td:last-child {
-                width: auto;
-                display: block;
-                text-align: center;
-            }
-
-            td:last-child input {
-                text-align: center;
-            }
-
-            td:first-child::before {
-                content: attr(data-label);
-                font-weight: bold;
-                display: block;
-                margin-bottom: 5px;
-            }
-
-            thead {
-                display: none;
-            }
-
-            /* Hide table headers on small screens if using data-label */
+            .navbar .app-title { margin-bottom: 10px; }
+            .container { padding: 0 15px 15px 15px; }
+            td:first-child, td:last-child { width: auto; display:block; text-align:center; }
+            td:last-child input { text-align:center; }
+            td:first-child::before { content: attr(data-label); font-weight:bold; display:block; margin-bottom:5px;}
+            thead { display:none; } /* Hide table headers on small screens if using data-label */
         }
     </style>
 </head>
-
 <body>
     <nav class="navbar">
         <span class="app-title">Finance App</span>
@@ -327,8 +256,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
 
         <div class="form-container">
             <?php if (!empty($feedback_message)): ?>
-                <div
-                    class="feedback-message <?= strpos(strtolower($feedback_message), 'error') !== false || strpos(strtolower($feedback_message), 'invalid') !== false ? 'error' : 'success' ?>">
+                <div class="feedback-message <?= strpos(strtolower($feedback_message), 'error') !== false || strpos(strtolower($feedback_message), 'invalid') !== false ? 'error' : 'success' ?>">
                     <?= htmlspecialchars($feedback_message) ?>
                 </div>
             <?php endif; ?>
@@ -349,18 +277,15 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
                     <tbody>
                         <?php foreach ($accounts as $a): ?>
                             <tr>
-                                <td data-label="Account:"><?= htmlspecialchars($a['name']) ?>
-                                    (<?= htmlspecialchars($a['type']) ?>)</td>
+                                <td data-label="Account:"><?= htmlspecialchars($a['name']) ?> (<?= htmlspecialchars($a['type']) ?>)</td>
                                 <td>
-                                    <input type="number" step="0.01" name="balance[<?= $a['id'] ?>]" placeholder="0.00"
-                                        value="<?= htmlspecialchars($last_snapshot_balances[$a['id']] ?? '') ?>" required>
+                                    <input type="number" step="0.01" name="balance[<?= $a['id'] ?>]" placeholder="0.00" value="<?= htmlspecialchars($last_snapshot_balances[$a['id']] ?? '') ?>" required>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($accounts)): ?>
                             <tr>
-                                <td colspan="2" style="text-align:center;">No accounts found. Please add accounts via
-                                    initial_data.sql or other admin interface.</td>
+                                <td colspan="2" style="text-align:center;">No accounts found. Please add accounts via initial_data.sql or other admin interface.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -370,5 +295,4 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
         </div>
     </div>
 </body>
-
 </html>

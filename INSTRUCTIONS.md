@@ -53,7 +53,7 @@ To run this application, you will need:
     *   In the **root directory** of your project, create a new file named `.env`.
     *   Copy the following template into your new `.env` file:
         ```dotenv
-        DBNAMEFINANCE="your_db_name"
+        DBNAMEUTIL="your_db_name"
         DBUSER="your_db_username"
         DBPASS="your_db_password"
         ```
@@ -183,7 +183,7 @@ To run this application, you will need:
     *   In the **root directory** of your project, create a new file named `.env`.
     *   Copy the following template into your new `.env` file:
         ```dotenv
-        DBNAMEFINANCE="your_db_name"
+        DBNAMEUTIL="your_db_name"
         DBUSER="your_db_username"
         DBPASS="your_db_password"
         ```
