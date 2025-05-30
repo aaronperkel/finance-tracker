@@ -72,14 +72,25 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        #financial-summary-container { flex: 2; min-width: 300px; } /* Takes more space */
-        #hour-logging-container { flex: 1; min-width: 280px; }    /* Takes less space */
+        #financial-summary-container { flex: 1; min-width: 300px; } /* Adjusted to flex: 1, was 2 */
+        /* #hour-logging-container { flex: 1; min-width: 280px; }    REMOVED */
         
         /* Individual Sections Styling */
-        #financial-summary div, #hour-logging-section form div { margin-bottom: 12px; }
-        #financial-summary span, #hour-logging-section span { font-weight: bold; color: #2980b9; } /* Blue for data values */
-        .currency::before { content: "$"; } /* Keep the dollar sign */
-        .debug-info { font-size: 0.85em; color: #7f8c8d; margin-top: 15px; } /* Styling for debug info */
+        #financial-summary div { margin-bottom: 12px; } 
+        #financial-summary span { font-weight: bold; color: #2980b9; } 
+        .currency::before { content: "$"; }
+        .debug-info { font-size: 0.85em; color: #7f8c8d; margin-top: 15px; } 
+        #payday-message-container { /* Style for the Pay Day! message */
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #27ae60; /* Green */
+            text-align: center;
+            padding: 10px;
+            background-color: #e6ffe6;
+            border: 1px solid #b3ffb3;
+            border-radius: 5px;
+            margin-bottom: 12px;
+        }
 
         /* Form elements */
         label { 
@@ -182,31 +193,20 @@
                     <div>Total Cash on Hand: <span id="total-cash" class="currency">N/A</span></div>
                     <div>Receivables: <span id="receivables-balance" class="currency">N/A</span></div>
                     <div><strong>Total Owed:</strong> <span id="total-owed" class="currency">0.00</span></div>
-                    <div>Estimated Next Paycheck: <span id="next-paycheck-amount" class="currency">N/A</span> on Next Pay Date: <span id="next-paycheck-date">N/A</span></div>
-                    <div>Future Net Worth (after next paycheck): <span id="future-net-worth" class="currency">N/A</span></div>
+                    
+                    <div id="payday-message-container" style="display: none;">Pay Day!</div>
+                    <div id="next-paycheck-line">
+                        Estimated Next Paycheck: <span id="next-paycheck-amount" class="currency">N/A</span> 
+                        on Next Pay Date: <span id="next-paycheck-date">N/A</span>
+                    </div>
+                    
+                    <div id="future-net-worth-line">Future Net Worth (after next paycheck): <span id="future-net-worth" class="currency">N/A</span></div>
                     <div class="debug-info">
                         Debug Pay Period: <span id="debug-pay-start">N/A</span> to <span id="debug-pay-end">N/A</span>
                     </div>
                 </div>
             </div>
-
-            <div id="hour-logging-container">
-                <h2>Log Worked Hours</h2>
-                <div id="hour-logging-section">
-                    <form id="log-hours-form">
-                        <div>
-                            <label for="log_date">Date:</label>
-                            <input type="date" id="log_date" name="log_date" required>
-                        </div>
-                        <div>
-                            <label for="hours_worked">Hours Worked:</label>
-                            <input type="number" id="hours_worked" name="hours_worked" step="0.01" min="0.01" max="24" required>
-                        </div>
-                        <button type="submit">Log Hours</button>
-                    </form>
-                    <div id="log-hours-feedback"></div>
-                </div>
-            </div>
+            <!-- HOUR LOGGING CONTAINER REMOVED -->
         </div>
 
         <div id="chart-container">
@@ -248,8 +248,26 @@
                     document.getElementById('total-cash').textContent = formatCurrency(data.total_cash_on_hand);
                     document.getElementById('receivables-balance').textContent = formatCurrency(data.receivables_balance);
                     document.getElementById('total-owed').textContent = formatCurrency(data.total_liabilities !== undefined ? data.total_liabilities : 0);
-                    document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
-                    document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'N/A';
+                    
+                    const nextPaycheckLine = document.getElementById('next-paycheck-line');
+                    const paydayMessageContainer = document.getElementById('payday-message-container');
+                    const futureNetWorthLine = document.getElementById('future-net-worth-line');
+
+                    if (data.is_pay_day) {
+                        nextPaycheckLine.style.display = 'none';
+                        paydayMessageContainer.style.display = 'block'; // Show "Pay Day!"
+                        futureNetWorthLine.style.display = 'none'; // Hide future net worth on payday
+                        // Values for estimated_upcoming_pay will be 0 from API
+                        document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay); 
+                        document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'Today!';
+                    } else {
+                        nextPaycheckLine.style.display = 'block'; // Or 'inline' or '' depending on original display
+                        paydayMessageContainer.style.display = 'none'; // Hide "Pay Day!"
+                        futureNetWorthLine.style.display = 'block'; // Show future net worth
+                        document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
+                        document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'N/A';
+                    }
+                    
                     document.getElementById('future-net-worth').textContent = formatCurrency(data.future_net_worth);
                     
                     document.getElementById('debug-pay-start').textContent = data.debug_pay_period_start || 'N/A';
@@ -288,53 +306,7 @@
                 });
         }
 
-        document.getElementById('log-hours-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const feedbackDiv = document.getElementById('log-hours-feedback');
-            feedbackDiv.textContent = '';
-            feedbackDiv.className = '';
-
-            const formData = new FormData(this);
-            const logDate = formData.get('log_date');
-            const hoursWorked = formData.get('hours_worked');
-
-            if (!logDate || !hoursWorked) {
-                feedbackDiv.textContent = 'Error: Both date and hours worked are required.';
-                feedbackDiv.className = 'error';
-                return;
-            }
-            if (parseFloat(hoursWorked) <= 0 || parseFloat(hoursWorked) > 24) {
-                feedbackDiv.textContent = 'Error: Hours worked must be between 0.01 and 24.';
-                feedbackDiv.className = 'error';
-                return;
-            }
-
-            fetch('log_hours.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json()) // Assuming log_hours.php always returns JSON
-            .then(result => {
-                if (result.success) {
-                    feedbackDiv.textContent = result.success;
-                    feedbackDiv.className = 'success';
-                    this.reset(); 
-                    fetchFinancialData(); 
-                } else if (result.error) {
-                    feedbackDiv.textContent = 'Error: ' + result.error;
-                    feedbackDiv.className = 'error';
-                } else {
-                    // Fallback for unexpected response structure
-                    feedbackDiv.textContent = 'Error: Unexpected response from server.';
-                    feedbackDiv.className = 'error';
-                }
-            })
-            .catch(error => {
-                console.error('Log hours request failed:', error);
-                feedbackDiv.textContent = 'Request failed: ' + error.message; // Show network error message
-                feedbackDiv.className = 'error';
-            });
-        });
+        // Hour logging form JavaScript REMOVED
 
         // Initial data load
         fetchFinancialData();

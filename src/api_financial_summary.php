@@ -101,6 +101,7 @@ try {
     $response["estimated_federal_tax"] = 0.00;
     $response["estimated_state_tax"] = 0.00;
     $response["estimated_upcoming_pay"] = 0.00;
+    $response["is_pay_day"] = false; // Initialize is_pay_day
 
     // Helper function for pay period cutoff
     function get_cutoff_sunday_before_payday(DateTime $payDateObj): DateTime {
@@ -128,10 +129,10 @@ try {
 
         $current_date_time = new DateTime();
         $current_date_time->setTime(0,0,0); // Normalize current date for comparisons
-
+        
+        // $current_day_of_month = (int)$current_date_time->format('j'); // For direct day comparison if needed later
         $current_year = (int)$current_date_time->format('Y');
         $current_month = (int)$current_date_time->format('n');
-        // $current_day_of_month = (int)$current_date_time->format('j'); // Not directly used in this revised logic block, but good for context
 
         // --- Determine Payday Objects for Current Month ---
         $payday1_current_month = new DateTime();
@@ -190,28 +191,59 @@ try {
         $response["debug_true_next_payday"] = $true_next_payday_obj->format('Y-m-d');
         $response["debug_true_prev_payday"] = $true_prev_payday_obj->format('Y-m-d');
 
+        // Define jobStartDate
+        $jobStartDate = new DateTime('2025-05-20'); // Ensure this matches other scripts
+        $jobStartDate->setTime(0,0,0);
 
-        // Sum hours_worked for the current pay period (inclusive start and end)
-        $hours_stmt = $pdo->prepare("
-            SELECT SUM(hours_worked) 
-            FROM logged_hours 
-            WHERE log_date >= ? AND log_date <= ? 
-        ");
-        $hours_stmt->execute([
-            $current_pay_period_start_date_obj->format('Y-m-d'), 
-            $current_pay_period_end_date_obj->format('Y-m-d')
-        ]);
-        $total_hours = floatval($hours_stmt->fetchColumn() ?: 0);
-        
-        $gross_estimated_pay = $total_hours * $pay_rate;
-        $estimated_federal_tax = $gross_estimated_pay * $federal_tax_rate_value;
-        $estimated_state_tax = $gross_estimated_pay * $state_tax_rate_value;
-        $net_estimated_pay = $gross_estimated_pay - $estimated_federal_tax - $estimated_state_tax;
+        // Determine if today is a payday
+        if ($current_date_time == $payday1_current_month || $current_date_time == $payday2_current_month) {
+            $response["is_pay_day"] = true;
+        }
 
-        $response["gross_estimated_pay"] = round($gross_estimated_pay, 2);
-        $response["estimated_federal_tax"] = round($estimated_federal_tax, 2);
-        $response["estimated_state_tax"] = round($estimated_state_tax, 2);
-        $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2);
+        if ($response["is_pay_day"]) {
+            $response["gross_estimated_pay"] = 0.00;
+            $response["estimated_federal_tax"] = 0.00;
+            $response["estimated_state_tax"] = 0.00;
+            $response["estimated_upcoming_pay"] = 0.00;
+        } else {
+            // Fetch explicitly logged hours for the period
+            $stmt_logged = $pdo->prepare("SELECT log_date, hours_worked FROM logged_hours WHERE log_date BETWEEN ? AND ?");
+            $stmt_logged->execute([
+                $current_pay_period_start_date_obj->format('Y-m-d'),
+                $current_pay_period_end_date_obj->format('Y-m-d')
+            ]);
+            $logged_hours_for_period_raw = $stmt_logged->fetchAll(PDO::FETCH_ASSOC);
+            $explicitly_logged_hours = [];
+            foreach ($logged_hours_for_period_raw as $row) {
+                $explicitly_logged_hours[$row['log_date']] = (float)$row['hours_worked'];
+            }
+
+            $total_hours_for_period = 0.0;
+            $loop_date = clone $current_pay_period_start_date_obj;
+            while ($loop_date <= $current_pay_period_end_date_obj) {
+                $date_str = $loop_date->format('Y-m-d');
+                $day_of_week = (int)$loop_date->format('N'); // 1 (Mon) to 7 (Sun)
+
+                if ($loop_date >= $jobStartDate && $day_of_week >= 1 && $day_of_week <= 5) { // Is a relevant workday
+                    if (isset($explicitly_logged_hours[$date_str])) {
+                        $total_hours_for_period += $explicitly_logged_hours[$date_str];
+                    } else {
+                        $total_hours_for_period += 7.5; // Default hours
+                    }
+                }
+                $loop_date->modify('+1 day');
+            }
+            
+            $gross_estimated_pay = $total_hours_for_period * $pay_rate;
+            $estimated_federal_tax = $gross_estimated_pay * $federal_tax_rate_value;
+            $estimated_state_tax = $gross_estimated_pay * $state_tax_rate_value;
+            $net_estimated_pay = $gross_estimated_pay - $estimated_federal_tax - $estimated_state_tax;
+
+            $response["gross_estimated_pay"] = round($gross_estimated_pay, 2);
+            $response["estimated_federal_tax"] = round($estimated_federal_tax, 2);
+            $response["estimated_state_tax"] = round($estimated_state_tax, 2);
+            $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2);
+        }
     }
     
     // Future Net Worth - always use the (potentially net) estimated_upcoming_pay
