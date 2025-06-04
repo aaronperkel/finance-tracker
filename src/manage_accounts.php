@@ -404,7 +404,7 @@ $accounts = $accounts_stmt->fetchAll(PDO::FETCH_ASSOC);
                         <tr>
                             <th>Name</th>
                             <th>Type</th>
-                            <th style="width: 120px;">Sort Order</th> {/* Adjusted width for input */}
+                            <th style="width: 120px;">Sort Order</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -419,12 +419,10 @@ $accounts = $accounts_stmt->fetchAll(PDO::FETCH_ASSOC);
                                            placeholder="N/A" style="width: 80px; padding: 5px;">
                                 </td>
                                 <td class="actions-cell" data-label="Actions">
-                                    {/* This form is now nested. The button's name will differentiate actions. */}
                                     <form action="manage_accounts.php" method="POST" style="display: inline;">
                                         <input type="hidden" name="delete_account_id" value="<?= $account['id']; ?>">
                                         <button type="submit" name="delete_account_action" onclick="return confirm('Are you sure you want to delete this account? This action cannot be undone.');">Delete</button>
                                     </form>
-                                    {/* Edit button/link could go here in the future */}
                                 </td>
                             </tr>
                         <?php endforeach; ?>
