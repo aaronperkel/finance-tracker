@@ -237,25 +237,20 @@
 
         /* Responsive adjustments */
         @media (max-width: 768px) {
-
-            /* .main-layout {
-                flex-direction: column; 
-            } */
-            .navbar {
+            body nav.navbar { /* Increased specificity */
                 flex-direction: column;
                 align-items: flex-start;
             }
-
-            .navbar a {
+            body nav.navbar a { /* Increased specificity */
                 margin-bottom: 5px;
                 width: 100%;
                 text-align: left;
             }
-
-            .navbar .app-title {
+            body nav.navbar .app-title { /* Increased specificity */
                 margin-bottom: 10px;
             }
 
+            /* Styles for other elements on mobile if needed, e.g., chart container */
             #chart-container {
                 aspect-ratio: 1 / 1;
                 /* More square on smaller screens */
@@ -271,6 +266,7 @@
         <a href="index.php" class="active">Dashboard</a>
         <a href="add_snapshot.php">Add Snapshot</a>
         <a href="calendar_hours.php">Hours Calendar</a>
+        <a href="manage_accounts.php">Manage Accounts</a>
         <a href="admin_settings.php">Settings</a>
     </nav>
 
@@ -388,7 +384,26 @@
                             }]
                         },
                         options: {
-                            scales: { y: { beginAtZero: false } },
+                            scales: {
+                                x: {
+                                    type: 'time',
+                                    time: {
+                                        unit: 'day',
+                                        tooltipFormat: 'MMM d, yyyy' // Example: Jan 1, 2023
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Date'
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: false,
+                                    title: {
+                                        display: true,
+                                        text: 'Net Worth'
+                                    }
+                                }
+                            },
                             responsive: true,
                             maintainAspectRatio: false
                         }

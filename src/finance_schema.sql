@@ -2,7 +2,8 @@
 CREATE TABLE accounts (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   name         VARCHAR(100) NOT NULL,
-  type         ENUM('Asset','Liability') NOT NULL
+  type         ENUM('Asset','Liability') NOT NULL,
+  sort_order   INT
 );
 
 CREATE TABLE snapshots (

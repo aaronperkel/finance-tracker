@@ -70,7 +70,7 @@ if ($latest_snapshot_id) {
 // If accounts appear duplicated on the page, the likely cause is duplicate entries
 // in the `accounts` table in the database.
 // Check with a query like: SELECT name, COUNT(*) FROM accounts GROUP BY name HAVING COUNT(*) > 1;
-$accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(); // Order for consistency
+$accounts = $pdo->query("SELECT * FROM accounts ORDER BY sort_order, name")->fetchAll(); // Order by sort_order, then name
 ?>
 <!DOCTYPE html>
 <html>
@@ -248,6 +248,7 @@ $accounts = $pdo->query("SELECT * FROM accounts ORDER BY type, name")->fetchAll(
         <a href="index.php">Dashboard</a>
         <a href="add_snapshot.php" class="active">Add Snapshot</a>
         <a href="calendar_hours.php">Hours Calendar</a>
+        <a href="manage_accounts.php">Manage Accounts</a>
         <a href="admin_settings.php">Settings</a>
     </nav>
 
