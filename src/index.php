@@ -225,11 +225,10 @@
         /* Chart Container */
         #chart-container {
             position: relative;
+            min-height: 500px;
             max-height: 500px;
-            aspect-ratio: 2 / 1;
             margin-left: auto;
             margin-right: auto;
-            overflow: hidden;
         }
 
         #nwChart {
@@ -280,8 +279,8 @@
         <div id="summary-error"></div>
 
         <div class="main-layout">
+            <h2>Summary</h2>
             <div id="financial-summary-container">
-                <h2>Summary</h2>
                 <div id="financial-summary">
                     <div id="payday-message-container" style="display: none;">Pay Day!</div>
                     <div>Current Net Worth: <span id="current-net-worth" class="currency">N/A</span></div>
@@ -305,8 +304,8 @@
         </div>
 
         <!-- Chart container is now a direct child of .container, styled by .main-layout > div selector -->
+        <h2>Net Worth Over Time</h2>
         <div id="chart-container">
-            <h2>Net Worth Over Time</h2>
             <canvas id="nwChart"></canvas>
         </div>
     </div>
