@@ -140,227 +140,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch existing accounts for display - always run after potential add/delete
 $accounts_stmt = $pdo->query("SELECT id, name, type, sort_order FROM accounts ORDER BY sort_order ASC, name ASC");
 $accounts = $accounts_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$page_title = 'Manage Accounts - Finance App';
+$active_page = 'manage_accounts';
+$page_specific_css = 'manage_accounts.css';
+// $page_specific_js = 'manage_accounts.js'; // No significant JS for now
+include 'templates/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Accounts - Finance App</title>
-    <style>
-        /* Basic Reset & Body Styling */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #eef1f5;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        /* Navigation Bar */
-        .navbar {
-            background-color: #2c3e50;
-            color: #fff;
-            padding: 1rem 2rem;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .navbar a {
-            color: #fff;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            margin-right: 10px;
-            border-radius: 4px;
-            transition: background-color 0.3s ease;
-        }
-        .navbar a:hover, .navbar a.active {
-            background-color: #3498db;
-        }
-        .navbar .app-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-right: auto;
-        }
-
-        /* Main Content Container */
-        .container {
-            padding: 0 20px 20px 20px;
-            max-width: 900px; /* Adjusted for potentially wider table */
-            margin: 0 auto;
-        }
-
-        h1.page-title, h2.section-title {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        h2.section-title {
-            margin-top: 30px;
-        }
-
-        /* Form Container Styling */
-        .form-container {
-            background-color: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
-        }
-        .form-container div.form-group {
-             margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-        input[type="text"], input[type="number"], select {
-            width: 100%;
-            padding: 10px; /* Slightly reduced padding */
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            transition: border-color 0.3s ease;
-            font-size: 0.95rem; /* Slightly reduced font size */
-        }
-        input[type="text"]:focus, input[type="number"]:focus, select:focus {
-            border-color: #3498db;
-            outline: none;
-        }
-        button[type="submit"] {
-            background-color: #27ae60; /* Green */
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s ease;
-            /* width: 100%; */ /* No longer full width for all buttons */
-        }
-        button[type="submit"]:hover { background-color: #229954; }
-
-        /* Table Styling */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        th, td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f0f2f5; /* Lighter header */
-            color: #333;
-            font-weight: 600;
-        }
-        tr:hover {
-             background-color: #f9f9f9;
-        }
-        td.actions-cell form {
-            display: inline-block; /* Keep delete buttons on same line if space */
-        }
-        td.actions-cell button[type="submit"] {
-            background-color: #e74c3c; /* Red for delete */
-            padding: 6px 10px;
-            font-size: 0.85rem;
-        }
-        td.actions-cell button[type="submit"]:hover {
-            background-color: #c0392b;
-        }
-
-
-        /* Feedback Messages */
-        .feedback-message-container {
-            margin-bottom: 20px;
-            padding: 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .feedback-message-container.success {
-            color: #1d6f42;
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-        }
-        .feedback-message-container.error {
-            color: #721c24;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-        }
-        .feedback-message-container:empty { display: none; }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .navbar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .navbar a {
-                margin-bottom: 5px;
-                width: 100%;
-                text-align: left;
-            }
-            .navbar .app-title { margin-bottom: 10px; }
-            .container { padding: 0 15px 15px 15px; }
-
-            table, thead, tbody, th, td, tr {
-                display: block;
-            }
-            thead tr {
-                position: absolute;
-                top: -9999px;
-                left: -9999px;
-            }
-            tr { border: 1px solid #ccc; margin-bottom: 5px; border-radius: 0;}
-            td {
-                border: none;
-                border-bottom: 1px solid #eee;
-                position: relative;
-                padding-left: 50%;
-                text-align: right;
-            }
-            td:before {
-                position: absolute;
-                left: 6px;
-                width: 45%;
-                padding-right: 10px;
-                white-space: nowrap;
-                text-align: left;
-                font-weight: bold;
-                content: attr(data-label);
-            }
-            td.actions-cell { padding-left: 6px; text-align: left; } /* Adjust action cell for mobile */
-            td.actions-cell form { margin-right: 5px; margin-bottom: 5px;}
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <nav class="navbar">
-            <span class="app-title">Finance App</span>
-            <a href="index.php">Dashboard</a>
-            <a href="add_snapshot.php">Add Snapshot</a>
-            <a href="calendar_hours.php">Hours Calendar</a>
-            <a href="manage_accounts.php" class="active">Manage Accounts</a>
-            <a href="admin_settings.php">Settings</a>
-        </nav>
-    </header>
-    <main class="container">
         <h1 class="page-title">Manage Accounts</h1>
 
         <?php if (!empty($feedback_message)): ?>
-            <div class="feedback-message-container <?= htmlspecialchars($feedback_type); ?>">
+            <div class="feedback-message <?= htmlspecialchars($feedback_type); ?>">
                 <?= htmlspecialchars($feedback_message); ?>
             </div>
         <?php endif; ?>
@@ -409,12 +199,12 @@ $accounts = $accounts_stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <td data-label="Sort Order">
                                     <input type="number" name="sort_orders_input[<?= $account['id']; ?>]"
                                            value="<?= $account['sort_order'] !== null ? htmlspecialchars($account['sort_order']) : ''; ?>"
-                                           placeholder="N/A" style="width: 80px; padding: 5px;">
+                                           placeholder="N/A">
                                 </td>
                                 <td class="actions-cell" data-label="Actions">
                                     <form action="manage_accounts.php" method="POST" style="display: inline;">
                                         <input type="hidden" name="delete_account_id" value="<?= $account['id']; ?>">
-                                        <button type="submit" name="delete_account_action" onclick="return confirm('Are you sure you want to delete this account? This action cannot be undone.');">Delete</button>
+                                        <button type="submit" name="delete_account_action" class="delete-button" onclick="return confirm('Are you sure you want to delete this account? This action cannot be undone.');">Delete</button>
                                     </form>
                                 </td>
                             </tr>
@@ -426,10 +216,4 @@ $accounts = $accounts_stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </form>
         <?php endif; ?>
-
-    </main>
-    <footer>
-        <p style="text-align: center; margin-top: 30px; color: #777;">&copy; <?= date("Y"); ?> Finance Tracker</p>
-    </footer>
-</body>
-</html>
+<?php include 'templates/footer.php'; ?>

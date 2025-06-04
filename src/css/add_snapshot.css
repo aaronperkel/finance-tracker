@@ -1,0 +1,84 @@
+/* add_snapshot.css */
+
+.container { /* Snapshot specific container width */
+    max-width: 800px;
+}
+
+/* Form Container Styling */
+.form-container {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.form-container div.form-group { /* Grouping for label + input */
+     margin-bottom: 15px;
+}
+
+/* Form elements - specific to add_snapshot, if any overrides or additions are needed */
+/* Common form elements are in common.css */
+input[type="date"], input[type="number"] { /* Overriding padding from common.css if needed, or ensure consistency */
+    padding: 12px; /* Slightly larger padding */
+    font-size: 1rem; /* Ensure consistent font size */
+}
+
+button[type="submit"] { /* Overriding padding from common.css if needed */
+    padding: 12px 18px; /* Slightly larger padding */
+    font-size: 1rem; /* Ensure consistent font size */
+    margin-top: 10px; /* Space above button */
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px; /* Space below table */
+}
+th, td {
+    text-align: left;
+    padding: 12px; /* Increased padding */
+    border-bottom: 1px solid #ddd; /* Lighter border */
+}
+th {
+    background-color: #f9f9f9; /* Light background for headers */
+    color: #333;
+    font-weight: 600;
+}
+td:first-child { /* Account name column */
+    width: 60%;
+}
+td:last-child { /* Balance input column */
+    width: 40%;
+}
+tr:hover {
+     background-color: #f5f5f5; /* Hover effect for rows */
+}
+
+/* Feedback Messages specific to add_snapshot.php */
+/* Uses .feedback-message from common.css but ensures it's placed correctly */
+.form-container .feedback-message { /* To ensure it's styled within the form context */
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+
+/* Responsive adjustments for add_snapshot.php */
+@media (max-width: 768px) {
+    td:first-child, td:last-child {
+        width: auto;
+        display:block;
+        text-align:center;
+    }
+    td:last-child input {
+        text-align:center;
+    }
+    td:first-child::before {
+        content: attr(data-label);
+        font-weight:bold;
+        display:block;
+        margin-bottom:5px;
+    }
+    thead {
+        display:none; /* Hide table headers on small screens if using data-label */
+    }
+}

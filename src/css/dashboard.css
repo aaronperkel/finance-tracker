@@ -1,0 +1,93 @@
+/* dashboard.css */
+
+.container { /* Dashboard specific container width */
+    max-width: 1400px;
+}
+
+h2 {
+    color: #34495e; /* Slightly lighter blue for section headers */
+    border-bottom: 2px solid #bdc3c7; /* Light gray border */
+    padding-bottom: 10px;
+    margin-top: 10px; /* Ensure h2 has margin-top if it's the first child of a section */
+    margin-bottom: 15px;
+}
+
+/* Layout for sections */
+.main-layout {
+    /*display: flex; /* Can be re-enabled if a two-column layout is desired for summary/other */
+    /*flex-wrap: wrap; */
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.main-layout > div,
+#chart-container { /* Styles for direct children of main-layout AND chart-container */
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px; /* Ensure spacing when stacked */
+}
+
+#financial-summary-container {
+    /* flex: 1; /* Only if .main-layout is flex and has other items */
+    min-width: 300px;
+}
+
+/* Individual Sections Styling */
+#financial-summary div {
+    margin-bottom: 12px;
+}
+
+#financial-summary span {
+    font-weight: bold;
+    color: #2980b9;
+}
+
+.currency::before {
+    content: "$";
+}
+
+.debug-info {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    margin-top: 15px;
+}
+
+#payday-message-container {
+    background-color: #e6ffed; /* Light minty green */
+    color: #004d00; /* Darker green text */
+    padding: 12px 15px;
+    border: 1px solid #b2dfdb; /* Subtle teal/green border */
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1em; /* Slightly larger font */
+    margin-bottom: 12px; /* Consistent with other div spacing */
+    /* display: none; /* Managed by JS */
+    margin: auto;
+    width: 75%;
+}
+
+/* Chart Container */
+#chart-container { /* This is also styled by .main-layout > div */
+    position: relative;
+    min-height: 500px;
+    max-height: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#nwChart {
+    /* Canvas element itself should not have style for max-height if container controls it */
+}
+
+/* Responsive adjustments for dashboard specifically */
+@media (max-width: 768px) {
+    /* Styles for other elements on mobile if needed, e.g., chart container */
+    #chart-container {
+        aspect-ratio: 1 / 1; /* More square on smaller screens */
+        min-height: 300px; /* Adjust min-height for mobile if needed */
+        max-height: 400px; /* Adjust max-height for mobile */
+    }
+}
