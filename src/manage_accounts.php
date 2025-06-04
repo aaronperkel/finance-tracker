@@ -3,143 +3,136 @@ include 'db.php'; // Include the database connection script
 $feedback_message = ''; // For displaying success or error messages
 $feedback_type = '';    // To style feedback messages (e.g., 'success' or 'error')
 
-// Handle Delete Account
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_account_id'])) {
-    $account_id_to_delete = filter_input(INPUT_POST, 'delete_account_id', FILTER_VALIDATE_INT);
-    if ($account_id_to_delete) {
-        try {
-            // Check if account has associated balances
-            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM balances WHERE account_id = ?");
-            $stmt_check->execute([$account_id_to_delete]);
-            if ($stmt_check->fetchColumn() > 0) {
-                throw new Exception("Cannot delete account as it has associated balance entries. Please remove those first.");
-            }
-
-            $stmt = $pdo->prepare("DELETE FROM accounts WHERE id = ?");
-            if ($stmt->execute([$account_id_to_delete])) {
-                $feedback_message = "Account deleted successfully.";
-                $feedback_type = 'success';
-            } else {
-                throw new Exception("Failed to delete account. Database error.");
-            }
-        } catch (Exception $e) {
-            $feedback_message = "Error deleting account: " . $e->getMessage();
-            $feedback_type = 'error';
-        }
-    } else {
-        $feedback_message = "Invalid account ID for deletion.";
-        $feedback_type = 'error';
-    }
-}
-
-// Handle Add Account
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_account'])) {
-    $name = filter_input(INPUT_POST, 'account_name', FILTER_SANITIZE_STRING);
-    $type = filter_input(INPUT_POST, 'account_type', FILTER_SANITIZE_STRING);
-    $sort_order_raw = filter_input(INPUT_POST, 'sort_order', FILTER_SANITIZE_NUMBER_INT);
-    $sort_order = ($sort_order_raw === '' || $sort_order_raw === null) ? null : (int)$sort_order_raw;
-
-
-    if (empty($name) || empty($type)) {
-        $feedback_message = "Account Name and Type are required.";
-        $feedback_type = 'error';
-    } elseif (!in_array($type, ['Asset', 'Liability'])) {
-        $feedback_message = "Invalid Account Type selected.";
-        $feedback_type = 'error';
-    } elseif ($sort_order !== null && !is_int($sort_order)) { // Allow NULL sort_order
-        $feedback_message = "Sort Order must be a whole number or empty.";
-        $feedback_type = 'error';
-    } else {
-        try {
-            // Check if account name already exists
-            $stmt_check_name = $pdo->prepare("SELECT COUNT(*) FROM accounts WHERE name = ?");
-            $stmt_check_name->execute([$name]);
-            if ($stmt_check_name->fetchColumn() > 0) {
-                throw new Exception("An account with this name already exists.");
-            }
-
-            $stmt = $pdo->prepare("INSERT INTO accounts (name, type, sort_order) VALUES (?, ?, ?)");
-            if ($stmt->execute([$name, $type, $sort_order])) {
-                $feedback_message = "Account '{$name}' added successfully.";
-                $feedback_type = 'success';
-            } else {
-                throw new Exception("Database error occurred while adding the account.");
-            }
-        } catch (Exception $e) {
-            $feedback_message = "Error adding account: " . $e->getMessage();
-            $feedback_type = 'error';
-        }
-    }
-}
-
-// Handle Update Sort Orders
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_sort_orders'])) {
-    if (isset($_POST['sort_orders_input']) && is_array($_POST['sort_orders_input'])) {
-        $sort_orders_data = $_POST['sort_orders_input'];
-        $pdo->beginTransaction();
-        try {
-            $update_stmt = $pdo->prepare("UPDATE accounts SET sort_order = ? WHERE id = ?");
-            $updated_count = 0;
-            $error_encountered = false;
-
-            foreach ($sort_orders_data as $account_id => $sort_order_value) {
-                $account_id_sanitized = filter_var($account_id, FILTER_VALIDATE_INT);
-
-                // Treat empty string as NULL, otherwise validate as integer
-                $sort_order_sanitized = null;
-                if ($sort_order_value !== '') {
-                    $sort_order_sanitized = filter_var($sort_order_value, FILTER_VALIDATE_INT);
-                    if ($sort_order_sanitized === false) { // Invalid integer input
-                        // Skip this entry or throw an error for the whole batch
-                        // For now, let's skip and continue, or one bad apple spoils the bunch.
-                        // To be stricter, you could set $error_encountered = true and break.
-                        // $feedback_message = "Invalid sort order value provided for account ID {$account_id_sanitized}. Please enter whole numbers or leave blank.";
-                        // $feedback_type = 'error';
-                        // $error_encountered = true;
-                        // break;
-                        // For this implementation, we'll allow valid ones to proceed and set sort_order to NULL for invalid ones.
-                        $sort_order_sanitized = null; // Or some default, or skip update for this ID
-                    }
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Handle Delete Account
+    if (isset($_POST['delete_account_action']) && isset($_POST['delete_account_id'])) {
+        $account_id_to_delete = filter_input(INPUT_POST, 'delete_account_id', FILTER_VALIDATE_INT);
+        if ($account_id_to_delete) {
+            try {
+                // Check if account has associated balances
+                $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM balances WHERE account_id = ?");
+                $stmt_check->execute([$account_id_to_delete]);
+                if ($stmt_check->fetchColumn() > 0) {
+                    throw new Exception("Cannot delete account as it has associated balance entries. Please remove those first.");
                 }
 
-                if ($account_id_sanitized) {
-                    if ($update_stmt->execute([$sort_order_sanitized, $account_id_sanitized])) {
-                        if ($update_stmt->rowCount() > 0) {
-                            $updated_count++;
+                $stmt = $pdo->prepare("DELETE FROM accounts WHERE id = ?");
+                if ($stmt->execute([$account_id_to_delete])) {
+                    $feedback_message = "Account deleted successfully.";
+                    $feedback_type = 'success';
+                } else {
+                    throw new Exception("Failed to delete account. Database error.");
+                }
+            } catch (Exception $e) {
+                $feedback_message = "Error deleting account: " . $e->getMessage();
+                $feedback_type = 'error';
+            }
+        } else {
+            $feedback_message = "Invalid account ID for deletion.";
+            $feedback_type = 'error';
+        }
+    }
+    // Handle Add Account
+    elseif (isset($_POST['add_account'])) {
+        $name_raw = filter_input(INPUT_POST, 'account_name');
+        $name = $name_raw ? htmlspecialchars($name_raw, ENT_QUOTES, 'UTF-8') : '';
+
+        $type_raw = filter_input(INPUT_POST, 'account_type');
+        $type = $type_raw ? htmlspecialchars($type_raw, ENT_QUOTES, 'UTF-8') : '';
+
+        $sort_order_raw = filter_input(INPUT_POST, 'sort_order', FILTER_SANITIZE_NUMBER_INT);
+        $sort_order = ($sort_order_raw === '' || $sort_order_raw === null) ? null : (int)$sort_order_raw;
+
+        // Note: $type is used in in_array check later. For that, the raw value might be more appropriate
+        // if htmlspecialchars encoding interferes with the check. However, 'Asset' and 'Liability' don't contain special chars.
+        // For now, we'll proceed with $type being the htmlspecialchars version.
+        // If $type validation fails due to this, we might need to use $type_raw for validation and $type for DB/echoing.
+
+        if (empty($name_raw) || empty($type_raw)) { // Validate based on raw inputs for emptiness
+            $feedback_message = "Account Name and Type are required.";
+            $feedback_type = 'error';
+        } elseif (!in_array($type_raw, ['Asset', 'Liability'])) { // Validate $type_raw
+            $feedback_message = "Invalid Account Type selected.";
+            $feedback_type = 'error';
+        } elseif ($sort_order !== null && !is_int($sort_order)) { // Allow NULL sort_order
+            $feedback_message = "Sort Order must be a whole number or empty.";
+            $feedback_type = 'error';
+        } else {
+            try {
+                // Check if account name already exists
+                // Use $name_raw for checking in DB to avoid issues with entities if names could have them
+                $stmt_check_name = $pdo->prepare("SELECT COUNT(*) FROM accounts WHERE name = ?");
+                $stmt_check_name->execute([$name_raw]); // Use $name_raw for DB check
+                if ($stmt_check_name->fetchColumn() > 0) {
+                    throw new Exception("An account with this name already exists.");
+                }
+
+                // When inserting into DB with prepared statements, raw values are fine for $name and $type
+                // as PDO handles escaping. $name (htmlspecialchars version) is good for feedback.
+                $stmt = $pdo->prepare("INSERT INTO accounts (name, type, sort_order) VALUES (?, ?, ?)");
+                if ($stmt->execute([$name_raw, $type_raw, $sort_order])) { // Use $name_raw, $type_raw for DB
+                    $feedback_message = "Account '" . htmlspecialchars($name_raw, ENT_QUOTES, 'UTF-8') . "' added successfully."; // Use htmlspecialchars for feedback
+                    $feedback_type = 'success';
+                } else {
+                    throw new Exception("Database error occurred while adding the account.");
+                }
+            } catch (Exception $e) {
+                $feedback_message = "Error adding account: " . $e->getMessage();
+                $feedback_type = 'error';
+            }
+        }
+    }
+    // Handle Update Sort Orders
+    elseif (isset($_POST['update_sort_orders'])) {
+        if (isset($_POST['sort_orders_input']) && is_array($_POST['sort_orders_input'])) {
+            $sort_orders_data = $_POST['sort_orders_input'];
+            $pdo->beginTransaction();
+            try {
+                $update_stmt = $pdo->prepare("UPDATE accounts SET sort_order = ? WHERE id = ?");
+                $updated_count = 0;
+                // $error_encountered = false; // Not strictly needed with transaction throwing exception
+
+                foreach ($sort_orders_data as $account_id => $sort_order_value) {
+                    $account_id_sanitized = filter_var($account_id, FILTER_VALIDATE_INT);
+
+                    $sort_order_sanitized = null;
+                    if ($sort_order_value !== '') {
+                        $sort_order_sanitized = filter_var($sort_order_value, FILTER_VALIDATE_INT);
+                        if ($sort_order_sanitized === false && $sort_order_value !== '') {
+                            // Allow empty string to become NULL, but non-empty non-integer is an error for this item
+                            // Or, more strictly, throw an exception for the whole batch:
+                            // throw new Exception("Invalid sort order value '".htmlspecialchars($sort_order_value)."' for account ID ".htmlspecialchars($account_id_sanitized));
+                             $sort_order_sanitized = null; // Defaulting to NULL if invalid non-empty string.
                         }
-                    } else {
-                        // $feedback_message = "Database error updating sort order for account ID {$account_id_sanitized}.";
-                        // $feedback_type = 'error';
-                        // $error_encountered = true;
-                        // break;
-                        // For now, let's assume it's okay if some fail, or log this specific error
-                        // For a transaction, a single failure should ideally cause a rollback.
-                        throw new Exception("Database error updating sort order for account ID {$account_id_sanitized}.");
+                    }
+
+                    if ($account_id_sanitized) {
+                        if ($update_stmt->execute([$sort_order_sanitized, $account_id_sanitized])) {
+                            if ($update_stmt->rowCount() > 0) {
+                                $updated_count++;
+                            }
+                        } else {
+                            throw new Exception("Database error updating sort order for account ID {$account_id_sanitized}.");
+                        }
                     }
                 }
+                $pdo->commit();
+                if ($updated_count > 0) {
+                    $feedback_message = "{$updated_count} account(s) sort order updated successfully.";
+                    $feedback_type = 'success';
+                } else {
+                    $feedback_message = "No sort orders were changed.";
+                    $feedback_type = 'info';
+                }
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $feedback_message = "Error updating sort orders: " . $e->getMessage();
+                $feedback_type = 'error';
             }
-
-            // if ($error_encountered) {
-            //     $pdo->rollBack();
-            //     // Feedback message already set
-            // } else {
-            $pdo->commit();
-            if ($updated_count > 0) {
-                $feedback_message = "{$updated_count} account(s) sort order updated successfully.";
-                $feedback_type = 'success';
-            } else {
-                $feedback_message = "No sort orders were changed.";
-                $feedback_type = 'info'; // Or success, depending on preference for no-op
-            }
-            // }
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $feedback_message = "Error updating sort orders: " . $e->getMessage();
+        } else {
+            $feedback_message = "No sort order data submitted.";
             $feedback_type = 'error';
         }
-    } else {
-        $feedback_message = "No sort order data submitted.";
-        $feedback_type = 'error';
     }
 }
 
