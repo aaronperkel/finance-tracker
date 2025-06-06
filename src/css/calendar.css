@@ -75,18 +75,59 @@
     background-color: #e0f0ff;
     font-weight: bold;
 }
+td.is-payday .day-number::after {
+    content: '💰'; /* Money bag emoji */
+    margin-left: 5px; /* Adjust spacing as needed */
+    font-size: 0.8em; /* Adjust size as needed */
+}
 .day-number { font-size: 0.9em; display: block; margin-bottom: 5px; text-align: right; }
+
+/* Default styling for the hours display text itself */
 .hours-display {
+    display: block; /* Ensure it takes up space for background/color */
+    padding: 2px 0;
     font-size: 1.1em;
-    font-weight: bold;
-    color: #27ae60; /* Green for hours */
-    display: block;
+    font-weight: normal; /* Reset from potential .default-hours bolding, specific styles will set bold if needed */
+    color: #333; /* Default text color, specific rules will override */
     margin-top: 5px;
 }
+
+/* For hours > 7.5 */
+td.gold-hours {
+    background-color: gold;
+    color: #333; /* Dark text for contrast on gold */
+}
+td.gold-hours .hours-display {
+    color: #333; /* Ensure this is distinct if cell background is gold */
+    font-weight: bold;
+}
+
+/* For hours = 0 and explicitly logged */
+td.red-hours {
+    background-color: hsl(0, 70%, 85%); /* Light red background */
+    color: hsl(0, 100%, 20%); /* Dark red text */
+}
+td.red-hours .hours-display {
+    color: hsl(0, 100%, 20%);
+    font-weight: bold;
+}
+
+/* Ensure disabled days and non-current month days don't get these colors */
+td.disabled-day, td.not-current-month {
+    background-color: #f5f5f5 !important; /* Override other background colors */
+    color: #ccc !important; /* Muted text */
+}
+td.disabled-day .hours-display,
+td.not-current-month .hours-display {
+    color: #ccc !important;
+}
+
+/* Commenting out .default-hours as it's being replaced by dynamic styling.
 .hours-display.default-hours {
-    color: #7f8c8d; /* Grey for default hours */
+    color: #7f8c8d;
     font-style: italic;
 }
+*/
 .hours-display:empty::after, .hours-display.placeholder-dash::after {
     content: "-"; /* Show dash if no hours or explicitly set to dash */
     color: #bbb;

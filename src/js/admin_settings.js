@@ -2,8 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('update-settings-form');
     const feedbackDiv = document.getElementById('settings-feedback');
     const payRateInput = document.getElementById('pay_rate');
-    const payDay1Input = document.getElementById('pay_day_1');
-    const payDay2Input = document.getElementById('pay_day_2');
     const federalTaxRateInput = document.getElementById('federal_tax_rate');
     const stateTaxRateInput = document.getElementById('state_tax_rate');
 
@@ -22,8 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
                  throw new Error(`API Error: ${data.error}`);
             }
             payRateInput.value = data.pay_rate || '';
-            payDay1Input.value = data.pay_day_1 || '';
-            payDay2Input.value = data.pay_day_2 || '';
             federalTaxRateInput.value = data.federal_tax_rate ? (parseFloat(data.federal_tax_rate) * 100).toFixed(2) : '0.00';
             stateTaxRateInput.value = data.state_tax_rate ? (parseFloat(data.state_tax_rate) * 100).toFixed(2) : '0.00';
         })
@@ -40,8 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const settingsData = {
             pay_rate: payRateInput.value,
-            pay_day_1: payDay1Input.value,
-            pay_day_2: payDay2Input.value,
             federal_tax_rate: (parseFloat(federalTaxRateInput.value) / 100).toFixed(4), // Store as decimal
             state_tax_rate: (parseFloat(stateTaxRateInput.value) / 100).toFixed(4)   // Store as decimal
         };
@@ -49,13 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Basic client-side validation (though server is primary)
         if (parseFloat(settingsData.pay_rate) < 0) {
             feedbackDiv.textContent = 'Error: Pay rate cannot be negative.';
-            feedbackDiv.classList.add('error');
-            return;
-        }
-        const pd1 = parseInt(settingsData.pay_day_1);
-        const pd2 = parseInt(settingsData.pay_day_2);
-        if (pd1 < 1 || pd1 > 31 || pd2 < 1 || pd2 > 31) { // Basic check, server will do more (e.g. valid days for month)
-            feedbackDiv.textContent = 'Error: Pay days must be between 1 and 31.';
             feedbackDiv.classList.add('error');
             return;
         }

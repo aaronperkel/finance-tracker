@@ -16,14 +16,6 @@ include 'templates/header.php';
                     <input type="number" id="pay_rate" name="pay_rate" step="0.01" min="0" required>
                 </div>
                 <div>
-                    <label for="pay_day_1">First Pay Day of Month (1-31):</label>
-                    <input type="number" id="pay_day_1" name="pay_day_1" min="1" max="31" step="1" required>
-                </div>
-                <div>
-                    <label for="pay_day_2">Second Pay Day of Month (1-31):</label>
-                    <input type="number" id="pay_day_2" name="pay_day_2" min="1" max="31" step="1" required>
-                </div>
-                <div>
                     <label for="federal_tax_rate">Federal Tax Rate (%):</label>
                     <input type="number" id="federal_tax_rate" name="federal_tax_rate" step="0.01" min="0" max="100" required>
                 </div>

@@ -24,9 +24,43 @@ jobStartDate.setHours(0, 0, 0, 0);
 const monthNames = ["January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"];
 
-function renderCalendar(month, year) {
+function applyHourStyles(dayCell, hoursSpan, hoursValue) {
+    // Clear previous hour-styling classes and inline styles
+    dayCell.classList.remove('gold-hours', 'red-hours');
+    dayCell.style.backgroundColor = '';
+    dayCell.style.color = '';
+    hoursSpan.style.color = ''; // Reset span color specifically
+    hoursSpan.classList.remove('placeholder-dash', 'default-hours'); // default-hours might be legacy
+
+    if (hoursValue === null || typeof hoursValue === 'undefined') { // For disabled/non-work days
+        hoursSpan.textContent = ''; // Will show '-' via CSS :empty selector rule
+        hoursSpan.classList.add('placeholder-dash');
+    } else if (hoursValue > 7.5) {
+        dayCell.classList.add('gold-hours');
+        hoursSpan.textContent = hoursValue.toFixed(2);
+        // hoursSpan color will be handled by td.gold-hours .hours-display CSS
+    } else if (hoursValue > 0 && hoursValue <= 7.5) {
+        let percentage = hoursValue / 7.5;
+        let hue = percentage * 120; // 0 (red-ish end, though we start at >0) to 120 (green)
+        dayCell.style.backgroundColor = `hsl(${hue}, 70%, 88%)`; // Light background
+        dayCell.style.color = `hsl(${hue}, 90%, 25%)`;    // Darker text for contrast
+        hoursSpan.style.color = `hsl(${hue}, 90%, 25%)`; // Ensure span text also has this color
+        hoursSpan.textContent = hoursValue.toFixed(2);
+        hoursSpan.style.fontWeight = 'bold'; // Make numbers prominent
+    } else if (hoursValue === 0) { // Explicitly 0 hours
+        dayCell.classList.add('red-hours');
+        hoursSpan.textContent = hoursValue.toFixed(2);
+        // hoursSpan color will be handled by td.red-hours .hours-display CSS
+    } else { // Should not happen if hoursValue is a number or null, but as a fallback
+        hoursSpan.textContent = '';
+        hoursSpan.classList.add('placeholder-dash');
+    }
+}
+
+// This function will now handle the actual DOM manipulation for calendar cells
+function renderCalendarInternal(month, year, paydays = []) {
     calendarBody.innerHTML = ''; // Clear previous calendar
-    currentMonthYearEl.textContent = `${monthNames[month]} ${year}`;
+    currentMonthYearEl.textContent = `${monthNames[month]} ${year}`; // Title is already set by renderCalendar, but good for standalone call if needed
 
     let firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
     let daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -55,17 +89,22 @@ function renderCalendar(month, year) {
                 hoursDisplaySpan.id = `hours-${dateStr}`;
                 dayCell.appendChild(hoursDisplaySpan);
 
+                // Check if this date is a payday
+                // 'paydays' is the parameter of renderCalendarInternal, defaults to []
+                // dateStr is 'YYYY-MM-DD', api_get_paydays.php is expected to return this format.
+                if (paydays.includes(dateStr)) {
+                    dayCell.classList.add('is-payday');
+                }
+
                 const dayOfWeek = cellDate.getDay();
 
                 if (cellDate < jobStartDate || dayOfWeek === 0 || dayOfWeek === 6) {
-                    hoursDisplaySpan.classList.add('placeholder-dash'); // Will show "-" via CSS
+                    applyHourStyles(dayCell, hoursDisplaySpan, null); // Style for disabled/non-work days
                     dayCell.classList.add('disabled-day');
                     // No click listener for modal
                 } else {
-                    // Default for valid weekday, pre-fetch
-                    hoursDisplaySpan.textContent = '7.50';
-                    hoursDisplaySpan.classList.add('default-hours');
-                    dayCell.addEventListener('click', () => openEditModal(dateStr, hoursDisplaySpan.textContent, hoursDisplaySpan.classList.contains('default-hours')));
+                    applyHourStyles(dayCell, hoursDisplaySpan, 7.50); // Default styling for workdays
+                    dayCell.addEventListener('click', () => openEditModal(dateStr, hoursDisplaySpan.textContent, false)); // isDefault is now less relevant here
                 }
 
                 if (date === today.getDate() && year === today.getFullYear() && month === today.getMonth()) {
@@ -79,6 +118,38 @@ function renderCalendar(month, year) {
         if (date > daysInMonth && i < 5) break; // Optimization if all days fit in less than 6 weeks
     }
     fetchAndDisplayHours(month + 1, year); // API uses 1-12 for month
+}
+
+// New renderCalendar function that fetches paydays first
+function renderCalendar(month, year) {
+    currentMonthYearEl.textContent = `${monthNames[month]} ${year}`; // Set title immediately
+
+    fetch(`api_get_paydays.php?year=${year}&month=${month + 1}`) // month + 1 for API (1-12)
+        .then(response => {
+            if (!response.ok) {
+                // Try to parse error body, then throw
+                return response.json().then(errData => {
+                    throw new Error(`HTTP error ${response.status}: ${errData.error || 'Failed to fetch paydays'}`);
+                }).catch(() => { // If error body parsing fails
+                    throw new Error(`HTTP error ${response.status}: Failed to fetch paydays and parse error response.`);
+                });
+            }
+            return response.json();
+        })
+        .then(paydaysData => {
+            // Ensure paydaysData is an array, even if API returns null or something else on success.
+            const validPaydays = Array.isArray(paydaysData) ? paydaysData : [];
+            renderCalendarInternal(month, year, validPaydays);
+        })
+        .catch(error => {
+            console.error('Error fetching paydays:', error.message);
+            // Fallback: render calendar without payday info if fetch fails
+            calendarBody.innerHTML = ''; // Clear calendar body
+            renderCalendarInternal(month, year, []); // Pass empty array for paydays
+            // Optionally, display a non-intrusive message about paydays failing to load
+            // For example, by adding a small note below the calendar or near the title.
+            // For now, console log is the primary feedback for this failure.
+        });
 }
 
 function fetchAndDisplayHours(apiMonth, apiYear) {
@@ -95,19 +166,13 @@ function fetchAndDisplayHours(apiMonth, apiYear) {
                 const cell = hoursSpan ? hoursSpan.closest('td') : null;
 
                 if (hoursSpan && cell && !cell.classList.contains('disabled-day')) {
-                    if (data[dayVal]) { // If API returned hours for this day
-                        hoursSpan.textContent = parseFloat(data[dayVal]).toFixed(2);
-                        hoursSpan.classList.remove('default-hours', 'placeholder-dash');
+                    if (data[dayVal] !== undefined && data[dayVal] !== null) { // If API returned hours for this day
+                        applyHourStyles(cell, hoursSpan, parseFloat(data[dayVal]));
                     } else {
-                        // If it's a valid weekday (already set to 7.50 and 'default-hours' by renderCalendar)
-                        // and not in API data, it remains 7.50 with 'default-hours' class.
-                        // If it was a weekend or pre-job, it remains '-'
-                        if (!hoursSpan.classList.contains('default-hours') && !hoursSpan.classList.contains('placeholder-dash')) {
-                             // This case should ideally not be hit if renderCalendar sets initial state correctly.
-                             // But as a fallback for a valid weekday not in API:
-                             hoursSpan.textContent = '7.50';
-                             hoursSpan.classList.add('default-hours');
-                        }
+                        // If data[dayVal] is not present, it means it's a default 7.5 day.
+                        // renderCalendarInternal has already applied the style for 7.5 hours.
+                        // So, no explicit action is needed here to re-apply default styling.
+                        // The existing default green for 7.50 will remain.
                     }
                 }
             }
@@ -196,22 +261,10 @@ saveHoursBtn.addEventListener('click', () => {
             modalFeedbackEl.textContent = result.success;
             modalFeedbackEl.className = 'success';
             const hoursSpan = document.getElementById(`hours-${currentModalDate}`);
-            if (hoursSpan) {
+            const cell = hoursSpan ? hoursSpan.closest('td') : null;
+            if (cell && hoursSpan) { // Ensure both cell and span exist
                 const newHours = parseFloat(hours);
-                if (newHours === 0) {
-                    hoursSpan.textContent = ''; // Show dash via CSS :empty pseudo
-                    hoursSpan.classList.add('placeholder-dash');
-                    hoursSpan.classList.remove('default-hours');
-                } else if (newHours === 7.5 && /* logic to determine if it should be default style */ false) {
-                    // This part is tricky: if user explicitly saves 7.5, should it look default or explicit?
-                    // For now, any save makes it look explicit.
-                    hoursSpan.textContent = newHours.toFixed(2);
-                    hoursSpan.classList.remove('default-hours', 'placeholder-dash');
-                }
-                else {
-                    hoursSpan.textContent = newHours.toFixed(2);
-                    hoursSpan.classList.remove('default-hours', 'placeholder-dash');
-                }
+                applyHourStyles(cell, hoursSpan, newHours);
             }
             setTimeout(() => { modal.style.display = 'none'; }, 1000);
         } else if (result.error) {
