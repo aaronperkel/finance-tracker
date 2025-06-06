@@ -57,7 +57,7 @@
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
-#hours-calendar td:hover { background-color: #f0f8ff; }
+#hours-calendar td:hover { background-color: #f0f8ff !important; }
 #hours-calendar td.not-current-month {
     background-color: #f9f9f9;
     color: #aaa;
@@ -75,10 +75,10 @@
     background-color: #e0f0ff;
     font-weight: bold;
 }
-td.is-payday .day-number::after {
+td.is-payday .day-number::before {
     content: '💰'; /* Money bag emoji */
-    margin-left: 5px; /* Adjust spacing as needed */
-    font-size: 0.8em; /* Adjust size as needed */
+    float: left;
+    font-size: 1.1em; /* Adjust size as needed */
 }
 .day-number { font-size: 0.9em; display: block; margin-bottom: 5px; text-align: right; }
 
