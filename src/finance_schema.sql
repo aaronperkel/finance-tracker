@@ -38,5 +38,3 @@ CREATE TABLE app_settings (
 --
 -- Example for app_settings:
 -- INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_rate', '20.00');
--- INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_day_1', '15');
--- INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_day_2', '30');
