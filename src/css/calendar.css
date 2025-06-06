@@ -67,13 +67,15 @@
     background-color: #f0f0f0; /* Light grey for disabled */
     color: #bbb;
     cursor: not-allowed;
-}
+}r
 #hours-calendar td.disabled-day:hover {
-    background-color: #f0f0f0; /* No hover effect */
+    background-color: #f0f0f0 !important; /* No hover effect */
 }
 #hours-calendar td.current-day {
     background-color: #e0f0ff;
     font-weight: bold;
+    border-width: 2px;
+    border-color: #2c3e50;
 }
 td.is-payday .day-number::before {
     content: '💰'; /* Money bag emoji */
