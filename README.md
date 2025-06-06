@@ -1,5 +1,7 @@
 # Finance Tracker
 
+![./home-censored.png](./img/home-censored.png)
+
 ## Project Overview
 This web application is a comprehensive tool designed for personal finance management and time tracking. It helps users gain insights into their financial health by tracking net worth, managing accounts, and providing financial summaries. Additionally, it allows users to log and visualize their work hours, offering a clear view of their time investment.
 
