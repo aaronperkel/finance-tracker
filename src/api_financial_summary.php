@@ -114,14 +114,6 @@ try {
     $response["estimated_upcoming_pay"] = 0.00;
     $response["is_pay_day"] = false; // Initialize is_pay_day
 
-    // Helper function for pay period cutoff
-    function get_cutoff_sunday_before_payday(DateTime $payDateObj): DateTime {
-        $cutoff = clone $payDateObj;
-        $cutoff->setTime(0,0,0); // Normalize time
-        $cutoff->modify('previous sunday');
-        return $cutoff;
-    }
-
     /**
      * Calculates the adjusted payday, moving to Friday if it falls on a weekend.
      *
@@ -181,28 +173,31 @@ try {
         $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
 
         // --- Determine True Previous Payday ---
+        // This section might not be strictly needed if we only care about the current/upcoming pay period based on true_next_payday_obj
+        // However, $true_prev_payday_obj is used in debug output, so we'll keep its calculation for now.
         $true_prev_payday_obj;
         if ($true_next_payday_obj->format('Y-m-d') === $payday1_current_month->format('Y-m-d')) {
-            // Next payday is the 1st of current month (adjusted), so previous was 2nd payday of previous month (adjusted)
             $prev_month_date = (clone $current_date_time)->modify('-1 month');
-            $true_prev_payday_obj = getAdjustedPaydate((int)$prev_month_date->format('Y'), (int)$prev_month_date->format('n'), 0); // 0 for last day
+            $true_prev_payday_obj = getAdjustedPaydate((int)$prev_month_date->format('Y'), (int)$prev_month_date->format('n'), 0);
         } elseif ($true_next_payday_obj->format('Y-m-d') === $payday2_current_month->format('Y-m-d')) {
-            // Next payday is the 2nd of current month (adjusted), so previous was 1st payday of current month (adjusted)
             $true_prev_payday_obj = clone $payday1_current_month;
         } else {
-            // Next payday is 1st of next month (adjusted), so previous was 2nd payday of current month (adjusted)
             $true_prev_payday_obj = clone $payday2_current_month;
         }
+
+        // --- Calculate NEW Pay Period Boundaries based on true_next_payday_obj ---
+        $pay_period_end_date_obj = (clone $true_next_payday_obj);
+        $pay_period_end_date_obj->modify('-5 days');
+        $pay_period_end_date_obj->setTime(0,0,0); // Normalize
+
+        $pay_period_start_date_obj = (clone $pay_period_end_date_obj);
+        $pay_period_start_date_obj->modify('-13 days');
+        $pay_period_start_date_obj->setTime(0,0,0); // Normalize
         
-        // Calculate Pay Period Boundaries
-        $current_pay_period_end_date_obj = get_cutoff_sunday_before_payday($true_next_payday_obj);
-        $prev_pay_period_end_date_obj = get_cutoff_sunday_before_payday($true_prev_payday_obj);
-        $current_pay_period_start_date_obj = (clone $prev_pay_period_end_date_obj)->modify('+1 day');
-        
-        $response["debug_pay_period_start"] = $current_pay_period_start_date_obj->format('Y-m-d');
-        $response["debug_pay_period_end"] = $current_pay_period_end_date_obj->format('Y-m-d');
+        $response["debug_pay_period_start"] = $pay_period_start_date_obj->format('Y-m-d');
+        $response["debug_pay_period_end"] = $pay_period_end_date_obj->format('Y-m-d');
         $response["debug_true_next_payday"] = $true_next_payday_obj->format('Y-m-d');
-        $response["debug_true_prev_payday"] = $true_prev_payday_obj->format('Y-m-d');
+        $response["debug_true_prev_payday"] = $true_prev_payday_obj->format('Y-m-d'); // Still useful for context
 
         // Define jobStartDate
         $jobStartDate = new DateTime('2025-05-20'); // Ensure this matches other scripts
@@ -223,8 +218,8 @@ try {
             // Fetch explicitly logged hours for the period
             $stmt_logged = $pdo->prepare("SELECT log_date, hours_worked FROM logged_hours WHERE log_date BETWEEN ? AND ?");
             $stmt_logged->execute([
-                $current_pay_period_start_date_obj->format('Y-m-d'),
-                $current_pay_period_end_date_obj->format('Y-m-d')
+                $pay_period_start_date_obj->format('Y-m-d'),
+                $pay_period_end_date_obj->format('Y-m-d')
             ]);
             $logged_hours_for_period_raw = $stmt_logged->fetchAll(PDO::FETCH_ASSOC);
             $explicitly_logged_hours = [];
@@ -233,8 +228,8 @@ try {
             }
 
             $total_hours_for_period = 0.0;
-            $loop_date = clone $current_pay_period_start_date_obj;
-            while ($loop_date <= $current_pay_period_end_date_obj) {
+            $loop_date = clone $pay_period_start_date_obj;
+            while ($loop_date <= $pay_period_end_date_obj) {
                 $date_str = $loop_date->format('Y-m-d');
                 $day_of_week = (int)$loop_date->format('N'); // 1 (Mon) to 7 (Sun)
 
@@ -249,6 +244,7 @@ try {
             }
             
             $gross_estimated_pay = $total_hours_for_period * $pay_rate;
+            // Tax rates from DB are already decimals (e.g., 0.10 for 10%), so no division by 100 needed.
             $estimated_federal_tax = $gross_estimated_pay * $federal_tax_rate_value;
             $estimated_state_tax = $gross_estimated_pay * $state_tax_rate_value;
             $net_estimated_pay = $gross_estimated_pay - $estimated_federal_tax - $estimated_state_tax;

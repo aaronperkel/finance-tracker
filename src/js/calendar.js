@@ -20,38 +20,59 @@ const jobStartDate = new Date('2025-05-20T00:00:00'); // MODIFIED as per user re
 // Ensure jobStartDate is set to the beginning of its day for accurate date-only comparisons
 jobStartDate.setHours(0, 0, 0, 0);
 
+// Function to calculate pay period start and end dates
+function getPayPeriod(paymentDateStr) {
+    // Ensure parsing as local midnight by explicitly providing T00:00:00
+    // JavaScript Date constructor can be unreliable with YYYY-MM-DD format alone
+    const paymentDate = new Date(paymentDateStr + 'T00:00:00');
+    paymentDate.setHours(0, 0, 0, 0); // Normalize to start of day
+
+    const payEndDate = new Date(paymentDate);
+    payEndDate.setDate(paymentDate.getDate() - 5);
+    payEndDate.setHours(0, 0, 0, 0); // Normalize
+
+    const payStartDate = new Date(payEndDate);
+    payStartDate.setDate(payEndDate.getDate() - 13);
+    payStartDate.setHours(0, 0, 0, 0); // Normalize
+
+    return { startDate: payStartDate, endDate: payEndDate };
+}
 
 const monthNames = ["January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"];
 
 function applyHourStyles(dayCell, hoursSpan, hoursValue) {
-    // Clear previous hour-styling classes and inline styles
+    // Clear previous specific hour styling (classes and inline styles for hours)
+    // Do NOT remove 'in-pay-period' here, as it's a base style for the cell.
     dayCell.classList.remove('gold-hours', 'red-hours');
-    dayCell.style.backgroundColor = '';
-    dayCell.style.color = '';
-    hoursSpan.style.color = ''; // Reset span color specifically
+    dayCell.style.backgroundColor = ''; // Clear any inline background from previous HSL
+    dayCell.style.color = '';           // Clear inline cell text color
+    hoursSpan.style.color = '';         // Clear inline span text color
+    hoursSpan.style.fontWeight = 'normal';// Reset font weight for span
     hoursSpan.classList.remove('placeholder-dash', 'default-hours'); // default-hours might be legacy
 
-    if (hoursValue === null || typeof hoursValue === 'undefined') { // For disabled/non-work days
-        hoursSpan.textContent = ''; // Will show '-' via CSS :empty selector rule
+    if (hoursValue === null || typeof hoursValue === 'undefined') { // For disabled/non-work days (or cells not representing a workday)
+        hoursSpan.textContent = '';
         hoursSpan.classList.add('placeholder-dash');
+        // Background will be default, or 'in-pay-period' blue if applicable, or 'disabled-day' grey.
+        // Text color for placeholder dash is handled by CSS for .placeholder-dash.
     } else if (hoursValue > 7.5) {
-        dayCell.classList.add('gold-hours');
+        dayCell.classList.add('gold-hours'); // CSS handles background & text color for .gold-hours
         hoursSpan.textContent = hoursValue.toFixed(2);
-        // hoursSpan color will be handled by td.gold-hours .hours-display CSS
+        // hoursSpan will inherit color from dayCell's .gold-hours style.
     } else if (hoursValue > 0 && hoursValue <= 7.5) {
         let percentage = hoursValue / 7.5;
-        let hue = percentage * 120; // 0 (red-ish end, though we start at >0) to 120 (green)
-        dayCell.style.backgroundColor = `hsl(${hue}, 70%, 88%)`; // Light background
-        dayCell.style.color = `hsl(${hue}, 90%, 25%)`;    // Darker text for contrast
-        hoursSpan.style.color = `hsl(${hue}, 90%, 25%)`; // Ensure span text also has this color
+        let hue = percentage * 120; // 0 (for >0 hours, so slightly red-ish green) to 120 (green)
+        dayCell.style.backgroundColor = `hsl(${hue}, 70%, 88%)`; // Light background (inline style)
+        dayCell.style.color = `hsl(${hue}, 90%, 25%)`;    // Darker text for contrast (inline style)
+        hoursSpan.style.color = `hsl(${hue}, 90%, 25%)`; // Ensure span text also has this color (inline style)
         hoursSpan.textContent = hoursValue.toFixed(2);
-        hoursSpan.style.fontWeight = 'bold'; // Make numbers prominent
+        hoursSpan.style.fontWeight = 'bold';
     } else if (hoursValue === 0) { // Explicitly 0 hours
-        dayCell.classList.add('red-hours');
+        dayCell.classList.add('red-hours'); // CSS handles background & text color for .red-hours
         hoursSpan.textContent = hoursValue.toFixed(2);
-        // hoursSpan color will be handled by td.red-hours .hours-display CSS
-    } else { // Should not happen if hoursValue is a number or null, but as a fallback
+        // hoursSpan will inherit color from dayCell's .red-hours style.
+    } else { // Fallback for unexpected hoursValue (e.g., negative, though input validation should prevent)
         hoursSpan.textContent = '';
         hoursSpan.classList.add('placeholder-dash');
     }
@@ -61,6 +82,13 @@ function applyHourStyles(dayCell, hoursSpan, hoursValue) {
 function renderCalendarInternal(month, year, paydays = []) {
     calendarBody.innerHTML = ''; // Clear previous calendar
     currentMonthYearEl.textContent = `${monthNames[month]} ${year}`; // Title is already set by renderCalendar, but good for standalone call if needed
+
+    const payPeriods = [];
+    if (Array.isArray(paydays)) {
+        paydays.forEach(paydayString => {
+            payPeriods.push(getPayPeriod(paydayString));
+        });
+    }
 
     let firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
     let daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -90,21 +118,34 @@ function renderCalendarInternal(month, year, paydays = []) {
                 dayCell.appendChild(hoursDisplaySpan);
 
                 // Check if this date is a payday
-                // 'paydays' is the parameter of renderCalendarInternal, defaults to []
-                // dateStr is 'YYYY-MM-DD', api_get_paydays.php is expected to return this format.
-                if (paydays.includes(dateStr)) {
+                if (Array.isArray(paydays) && paydays.includes(dateStr)) {
                     dayCell.classList.add('is-payday');
                 }
 
-                const dayOfWeek = cellDate.getDay();
+                // Normalize cellDate to the start of the day for accurate comparisons
+                const currentCellDateNormalized = new Date(cellDate);
+                currentCellDateNormalized.setHours(0,0,0,0);
 
-                if (cellDate < jobStartDate || dayOfWeek === 0 || dayOfWeek === 6) {
+                const dayOfWeek = currentCellDateNormalized.getDay();
+                let isDisabledDay = currentCellDateNormalized < jobStartDate || dayOfWeek === 0 || dayOfWeek === 6;
+
+                if (isDisabledDay) {
                     applyHourStyles(dayCell, hoursDisplaySpan, null); // Style for disabled/non-work days
                     dayCell.classList.add('disabled-day');
                     // No click listener for modal
                 } else {
                     applyHourStyles(dayCell, hoursDisplaySpan, 7.50); // Default styling for workdays
                     dayCell.addEventListener('click', () => openEditModal(dateStr, hoursDisplaySpan.textContent, false)); // isDefault is now less relevant here
+                }
+
+                // Check if cellDate is within any pay period
+                if (!isDisabledDay) { // Only apply if not a disabled day
+                    for (const period of payPeriods) {
+                        if (currentCellDateNormalized.getTime() >= period.startDate.getTime() && currentCellDateNormalized.getTime() <= period.endDate.getTime()) {
+                            dayCell.classList.add('in-pay-period');
+                            break; // Found a period, no need to check others
+                        }
+                    }
                 }
 
                 if (date === today.getDate() && year === today.getFullYear() && month === today.getMonth()) {

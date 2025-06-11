@@ -55,91 +55,96 @@
 #hours-calendar td {
     height: 100px; /* Min height for day cells */
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: outline 0.2s ease; /* MODIFIED for outline hover */
 }
-#hours-calendar td:hover { background-color: #f0f8ff !important; }
+
+/* MODIFIED HOVER RULE */
+#hours-calendar td:hover {
+    outline: 2px solid #007bff !important; /* Blue outline */
+    outline-offset: -2px; /* Keep outline inside */
+    /* background-color: #f0f8ff; */ /* Removed background change for hover */
+}
+
 #hours-calendar td.not-current-month {
     background-color: #f9f9f9;
     color: #aaa;
     cursor: default;
 }
+/* ADDED: Prevent hover outline on not-current-month days */
+#hours-calendar td.not-current-month:hover {
+    outline: none !important;
+}
+
+
+/* Styling for days within a pay period */
+#hours-calendar td.in-pay-period {
+    background-color: #e6f7ff; /* Light blue background - base style for pay period days */
+}
+
 #hours-calendar td.disabled-day {
-    background-color: #f0f0f0; /* Light grey for disabled */
-    color: #bbb;
+    background-color: #f0f0f0 !important;
+    color: #aaa !important;
     cursor: not-allowed;
-}r
+}
+/* MODIFIED: Prevent hover outline on disabled days */
 #hours-calendar td.disabled-day:hover {
-    background-color: #f0f0f0 !important; /* No hover effect */
+    background-color: #f0f0f0 !important;
+    outline: none !important;
 }
+
 #hours-calendar td.current-day {
-    background-color: #e0f0ff;
     font-weight: bold;
-    border-width: 2px;
-    border-color: #2c3e50;
+    border: 2px solid #007bff !important;
 }
+
 td.is-payday .day-number::before {
-    content: '💰'; /* Money bag emoji */
+    content: '💰';
     float: left;
-    font-size: 1.1em; /* Adjust size as needed */
+    font-size: 1.1em;
 }
 .day-number { font-size: 0.9em; display: block; margin-bottom: 5px; text-align: right; }
 
-/* Default styling for the hours display text itself */
 .hours-display {
-    display: block; /* Ensure it takes up space for background/color */
+    display: block;
     padding: 2px 0;
     font-size: 1.1em;
-    font-weight: normal; /* Reset from potential .default-hours bolding, specific styles will set bold if needed */
-    color: #333; /* Default text color, specific rules will override */
+    font-weight: normal;
     margin-top: 5px;
 }
 
-/* For hours > 7.5 */
-td.gold-hours {
-    background-color: gold;
-    color: #333; /* Dark text for contrast on gold */
-}
-td.gold-hours .hours-display {
-    color: #333; /* Ensure this is distinct if cell background is gold */
-    font-weight: bold;
+/* For hours > 7.5 - Ensure background has !important */
+#hours-calendar td.gold-hours {
+    background-color: gold !important;
+    color: #333 !important;
 }
 
-/* For hours = 0 and explicitly logged */
-td.red-hours {
-    background-color: hsl(0, 70%, 85%); /* Light red background */
-    color: hsl(0, 100%, 20%); /* Dark red text */
-}
-td.red-hours .hours-display {
-    color: hsl(0, 100%, 20%);
-    font-weight: bold;
+/* For hours = 0 - Ensure background has !important */
+#hours-calendar td.red-hours {
+    background-color: #ffdddd !important;
+    color: #770000 !important;
 }
 
-/* Ensure disabled days and non-current month days don't get these colors */
-td.disabled-day, td.not-current-month {
-    background-color: #f5f5f5 !important; /* Override other background colors */
-    color: #ccc !important; /* Muted text */
-}
-td.disabled-day .hours-display,
-td.not-current-month .hours-display {
-    color: #ccc !important;
+.hours-display.placeholder-dash::after {
+    color: #aaa;
 }
 
-/* Commenting out .default-hours as it's being replaced by dynamic styling.
-.hours-display.default-hours {
-    color: #7f8c8d;
-    font-style: italic;
+#hours-calendar td.disabled-day .hours-display,
+#hours-calendar td.not-current-month .hours-display,
+#hours-calendar td.disabled-day .hours-display.placeholder-dash::after,
+#hours-calendar td.not-current-month .hours-display.placeholder-dash::after {
+    color: #aaa !important;
 }
-*/
-.hours-display:empty::after, .hours-display.placeholder-dash::after {
-    content: "-"; /* Show dash if no hours or explicitly set to dash */
-    color: #bbb;
+
+.hours-display:empty::after,
+.hours-display.placeholder-dash::after {
+    content: "-";
     font-weight: normal;
     font-style: normal;
 }
 
 /* Edit Hours Modal */
 .modal {
-    display: none; /* Hidden by default */
+    display: none;
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -147,7 +152,7 @@ td.not-current-month .hours-display {
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.5); /* Dim background */
+    background-color: rgba(0,0,0,0.5);
 }
 .modal-content {
     background-color: #fff;
@@ -160,11 +165,11 @@ td.not-current-month .hours-display {
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 .modal-content h3 { margin-bottom: 15px; color: #2c3e50; }
-.modal-content label { /* Using common.css label and input, but can override here if needed */
-    margin-bottom: 5px; /* Slightly less margin for modal context */
+.modal-content label {
+    margin-bottom: 5px;
 }
-.modal-content input[type="number"] { /* Using common.css input, but can override here */
-    margin-bottom: 15px; /* More space below input in modal */
+.modal-content input[type="number"] {
+    margin-bottom: 15px;
 }
 .modal-buttons button {
     padding: 10px 15px;
@@ -175,20 +180,17 @@ td.not-current-month .hours-display {
 }
 .modal-buttons button#save-hours-btn { background-color: #27ae60; color: white; }
 .modal-buttons button#cancel-hours-btn { background-color: #ccc; }
-#modal-feedback { margin-top: 10px; font-weight: bold; } /* Also uses .success/.error from common.css */
-#modal-feedback.success { color: #27ae60; } /* Specific modal feedback success color if different */
-#modal-feedback.error { color: #c0392b; } /* Specific modal feedback error color if different */
+#modal-feedback { margin-top: 10px; font-weight: bold; }
+#modal-feedback.success { color: #27ae60; }
+#modal-feedback.error { color: #c0392b; }
 
-/* Responsive adjustments for calendar.php */
 @media (max-width: 768px) {
-    /* Navbar handled by common.css */
-    /* Container handled by common.css */
     #hours-calendar td { height: 80px; padding: 5px; font-size: 0.9em;}
     .day-number { font-size: 0.8em;}
     .hours-display { font-size: 1em;}
     .calendar-nav { flex-direction: column; gap: 10px;}
     .modal-content {
         width: 95%;
-        margin: 25% auto; /* Adjust margin for smaller screens */
+        margin: 25% auto;
     }
 }
