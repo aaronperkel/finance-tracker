@@ -68,11 +68,18 @@
     height: 100px;
     /* Min height for day cells */
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: outline 0.2s ease;
+    /* MODIFIED for outline hover */
 }
 
+/* MODIFIED HOVER RULE */
 #hours-calendar td:hover {
-    background-color: #f0f8ff !important;
+    outline: 2px solid #007bff !important;
+    /* Blue outline */
+    outline-offset: -2px;
+    /* Keep outline inside */
+    /* background-color: #f0f8ff; */
+    /* Removed background change for hover */
 }
 
 #hours-calendar td.not-current-month {
@@ -81,51 +88,39 @@
     cursor: default;
 }
 
+/* ADDED: Prevent hover outline on not-current-month days */
+#hours-calendar td.not-current-month:hover {
+    outline: none !important;
+}
+
+
 /* Styling for days within a pay period */
 #hours-calendar td.in-pay-period {
     background-color: #e6f7ff;
     /* Light blue background - base style for pay period days */
 }
 
-/* No specific combined rule for .current-day.in-pay-period needed if current-day primarily uses border */
-
 #hours-calendar td.disabled-day {
     background-color: #f0f0f0 !important;
     color: #aaa !important;
-    /* Using #aaa consistent with other disabled styles */
     cursor: not-allowed;
 }
 
+/* MODIFIED: Prevent hover outline on disabled days */
 #hours-calendar td.disabled-day:hover {
     background-color: #f0f0f0 !important;
-    /* No hover effect */
+    outline: none !important;
 }
 
 #hours-calendar td.current-day {
-    /* background-color: #e0f0ff; -- Removing this to allow hour/pay-period colors to show */
     font-weight: bold;
-    /* Keep font weight for emphasis */
     border: 2px solid #007bff !important;
-    /* Prominent border, use !important to ensure visibility */
-    /* box-shadow: 0 0 5px #007bff; */
-    /* Alternative or additional emphasis */
 }
 
-/* 
-   Hour-specific styling classes.
-   These need !important to override inline HSL styles if JS logic were to allow overlaps,
-   and to ensure they dominate over .in-pay-period or default td backgrounds.
-   The JS logic in applyHourStyles is mutually exclusive for HSL, gold-hours, red-hours,
-   so HSL (inline) will naturally override .in-pay-period.
-   .gold-hours and .red-hours classes need !important to ensure their defined background
-   is stronger than .in-pay-period.
-*/
 td.is-payday .day-number::before {
     content: '💰';
-    /* Money bag emoji */
     float: left;
     font-size: 1.1em;
-    /* Adjust size as needed */
 }
 
 .day-number {
@@ -135,84 +130,47 @@ td.is-payday .day-number::before {
     text-align: right;
 }
 
-/* Default styling for the hours display text itself */
 .hours-display {
     display: block;
     padding: 2px 0;
     font-size: 1.1em;
     font-weight: normal;
-    /* color: #333; */
-    /* Color is now primarily inherited from td or set by JS for HSL */
     margin-top: 5px;
 }
 
-/* For hours > 7.5 */
+/* For hours > 7.5 - Ensure background has !important */
 #hours-calendar td.gold-hours {
     background-color: gold !important;
     color: #333 !important;
-    /* Dark text for contrast on gold */
 }
 
-/* hours-display text color and font-weight will be inherited from td.gold-hours or set by JS if needed for HSL */
-
-/* For hours = 0 and explicitly logged */
+/* For hours = 0 - Ensure background has !important */
 #hours-calendar td.red-hours {
     background-color: #ffdddd !important;
-    /* Lighter red, more distinct from HSL reds */
     color: #770000 !important;
-    /* Dark red text */
 }
 
-/* hours-display text color and font-weight will be inherited from td.red-hours or set by JS if needed for HSL */
-
-
-/* Placeholder text style */
 .hours-display.placeholder-dash::after {
-    /* Ensure this is specific enough */
     color: #aaa;
-    /* Lighter color for placeholder dash, consistent with disabled text */
-}
-
-
-/*
-  General rules for disabled/non-current month days.
-  These MUST override any other styling (in-pay-period, gold, red, HSL)
-  hence the extensive use of !important.
-*/
-#hours-calendar td.disabled-day,
-#hours-calendar td.not-current-month {
-    background-color: #f0f0f0 !important;
-    color: #aaa !important;
 }
 
 #hours-calendar td.disabled-day .hours-display,
-/* Also style the hours display within these cells */
 #hours-calendar td.not-current-month .hours-display,
 #hours-calendar td.disabled-day .hours-display.placeholder-dash::after,
 #hours-calendar td.not-current-month .hours-display.placeholder-dash::after {
     color: #aaa !important;
 }
 
-/* Commenting out .default-hours as it's being replaced by dynamic styling.
-.hours-display.default-hours {
-    color: #7f8c8d;
-    font-style: italic;
-}
-*/
 .hours-display:empty::after,
 .hours-display.placeholder-dash::after {
-    /* :empty is for initial state, placeholder-dash for JS set */
     content: "-";
     font-weight: normal;
-    /* Ensure placeholder is not bold */
     font-style: normal;
-    /* color for placeholder is now in a more specific rule above or inherited from disabled-day */
 }
 
 /* Edit Hours Modal */
 .modal {
     display: none;
-    /* Hidden by default */
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -221,7 +179,6 @@ td.is-payday .day-number::before {
     height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.5);
-    /* Dim background */
 }
 
 .modal-content {
@@ -241,15 +198,11 @@ td.is-payday .day-number::before {
 }
 
 .modal-content label {
-    /* Using common.css label and input, but can override here if needed */
     margin-bottom: 5px;
-    /* Slightly less margin for modal context */
 }
 
 .modal-content input[type="number"] {
-    /* Using common.css input, but can override here */
     margin-bottom: 15px;
-    /* More space below input in modal */
 }
 
 .modal-buttons button {
@@ -274,23 +227,15 @@ td.is-payday .day-number::before {
     font-weight: bold;
 }
 
-/* Also uses .success/.error from common.css */
 #modal-feedback.success {
     color: #27ae60;
 }
 
-/* Specific modal feedback success color if different */
 #modal-feedback.error {
     color: #c0392b;
 }
 
-/* Specific modal feedback error color if different */
-
-/* Responsive adjustments for calendar.php */
 @media (max-width: 768px) {
-
-    /* Navbar handled by common.css */
-    /* Container handled by common.css */
     #hours-calendar td {
         height: 80px;
         padding: 5px;
@@ -313,6 +258,5 @@ td.is-payday .day-number::before {
     .modal-content {
         width: 95%;
         margin: 25% auto;
-        /* Adjust margin for smaller screens */
     }
 }
