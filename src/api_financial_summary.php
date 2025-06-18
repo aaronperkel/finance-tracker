@@ -156,11 +156,18 @@ try {
 
 
     echo json_encode($response);
+    exit; // <-- Add this line
 
 } catch (PDOException $e) {
-    http_response_code(500); error_log("Main PDOException: " . $e->getMessage()); echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    http_response_code(500);
+    error_log("Main PDOException: " . $e->getMessage());
+    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    exit; // <-- Add this line
 } catch (Exception $e) {
-    http_response_code(500); error_log("General Exception: " . $e->getMessage()); echo json_encode(['error' => 'General error: ' . $e->getMessage()]);
+    http_response_code(500);
+    error_log("General Exception: " . $e->getMessage());
+    echo json_encode(['error' => 'General error: ' . $e->getMessage()]);
+    exit; // <-- Add this line
 }
 ?>
 require_once 'db.php'; // 1. Include db.php
