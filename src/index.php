@@ -15,6 +15,9 @@ include 'templates/header.php';
                 <div id="financial-summary">
                     <div id="payday-message-container" style="display: none;">Pay Day!</div>
                     <div>Current Net Worth: <span id="current-net-worth" class="currency">N/A</span></div>
+                    <!-- New line to be added below -->
+                    <div>Effective Current Net Worth (after current month expenses): <span id="effective-current-net-worth" class="currency">N/A</span></div>
+                    <!-- End of new line -->
                     <div>Total Cash on Hand: <span id="total-cash" class="currency">N/A</span></div>
                     <div>Receivables: <span id="receivables-balance" class="currency">N/A</span></div>
                     <div><strong>Total Owed:</strong> <span id="total-owed" class="currency">0.00</span></div>

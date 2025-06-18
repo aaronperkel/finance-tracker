@@ -3,7 +3,8 @@ require_once 'db.php'; // 1. Include db.php
 header('Content-Type: application/json'); // 2. Set Content-Type header
 
 $response = [
-    "current_net_worth" => 0,
+    "current_net_worth" => 0, // Raw snapshot net worth
+    "net_worth_after_current_month_expenses" => 0, // Snapshot - current month deductions
     "total_cash_on_hand" => 0,
     "receivables_balance" => 0,
     "total_liabilities" => 0, // Added for Total Owed
@@ -29,10 +30,11 @@ try {
     // Get latest snapshot ID (Mandated Query)
     $latest_snapshot_id_stmt = $pdo->query("SELECT id FROM snapshots ORDER BY snapshot_date DESC, id DESC LIMIT 1");
     $latest_snapshot_id = $latest_snapshot_id_stmt->fetchColumn();
-    $response['debug_latest_snapshot_id_used'] = $latest_snapshot_id; // Debug line
+    $response['debug_latest_snapshot_id_used'] = $latest_snapshot_id;
 
+    $raw_snapshot_net_worth = 0;
     if ($latest_snapshot_id) {
-        // Current Net Worth
+        // Calculate raw snapshot net worth for $response["current_net_worth"]
         $stmt = $pdo->prepare("
             SELECT SUM(CASE WHEN a.type='Asset' THEN b.balance ELSE -b.balance END) as net_worth
             FROM balances b
@@ -40,7 +42,8 @@ try {
             WHERE b.snapshot_id = ?
         ");
         $stmt->execute([$latest_snapshot_id]);
-        $response["current_net_worth"] = floatval($stmt->fetchColumn() ?: 0);
+        $raw_snapshot_net_worth = floatval($stmt->fetchColumn() ?: 0);
+        $response["current_net_worth"] = round($raw_snapshot_net_worth, 2); // This is now the raw snapshot NW
 
         // Total Cash on Hand
         $cash_accounts = ["Truist Checking", "Capital One Savings", "Apple Savings"];
@@ -146,12 +149,9 @@ try {
     $totalCurrentMonthExpenses += $currentMonthUtilitiesShare;
     $response["current_month_deductions"] = round($totalCurrentMonthExpenses, 2);
 
-    // Adjust current_net_worth (which was from snapshot)
-    if ($latest_snapshot_id) {
-        $response["current_net_worth"] = floatval($response["current_net_worth"]) - $totalCurrentMonthExpenses;
-        $response["current_net_worth"] = round(floatval($response["current_net_worth"]), 2);
-    }
-    // $response["current_net_worth"] now matches definition #1 (Snapshot - This Month's Rent & Utilities)
+    // Calculate net_worth_after_current_month_expenses
+    // This uses the raw_snapshot_net_worth calculated at the beginning
+    $response["net_worth_after_current_month_expenses"] = round($raw_snapshot_net_worth - $totalCurrentMonthExpenses, 2);
 
     // Estimated Upcoming Pay and Next Pay Date
     // Remove pay_day_1 and pay_day_2 from query as they are no longer needed
@@ -320,9 +320,9 @@ try {
     // as the pay just received would ideally be part of a new snapshot soon.
     // If not payday, it's adjusted current + upcoming pay.
     if ($response["is_pay_day"]) {
-        $response["future_net_worth"] = $response["current_net_worth"];
+        $response["future_net_worth"] = $response["net_worth_after_current_month_expenses"];
     } else {
-        $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
+        $response["future_net_worth"] = round($response["net_worth_after_current_month_expenses"] + $response["estimated_upcoming_pay"], 2);
     }
 
     // projected_net_worth_after_next_rent - matches definition #3

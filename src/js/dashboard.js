@@ -27,39 +27,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.error) { // Handle application-level errors from API
                     throw new Error(`API Error: ${data.error}`);
                 }
-                document.getElementById('current-net-worth').textContent = formatCurrency(data.current_net_worth);
+                document.getElementById('current-net-worth').textContent = formatCurrency(data.current_net_worth); // Raw snapshot
+                // Populate the new element
+                document.getElementById('effective-current-net-worth').textContent = formatCurrency(data.net_worth_after_current_month_expenses);
+
                 document.getElementById('total-cash').textContent = formatCurrency(data.total_cash_on_hand);
                 document.getElementById('receivables-balance').textContent = formatCurrency(data.receivables_balance);
                 document.getElementById('total-owed').textContent = formatCurrency(data.total_liabilities !== undefined ? data.total_liabilities : 0);
 
                 const nextPaycheckLine = document.getElementById('next-paycheck-line');
                 const paydayMessageContainer = document.getElementById('payday-message-container');
+                // Get references to all projection lines
                 const futureNetWorthLine = document.getElementById('future-net-worth-line');
-                // Get references to the new elements
                 const projectedNextRentLine = document.getElementById('projected-next-rent-line');
                 const projectedNextUtilsLine = document.getElementById('projected-next-utils-line');
+                // The new effective line does not need to be hidden on payday
 
                 if (data.is_pay_day) {
-                    nextPaycheckLine.style.display = 'none';
                     paydayMessageContainer.style.display = 'block'; // Show "Pay Day!"
-                    futureNetWorthLine.style.display = 'none'; // Hide future net worth on payday
-                    projectedNextRentLine.style.display = 'none'; // Hide new lines on payday
-                    projectedNextUtilsLine.style.display = 'none'; // Hide new lines on payday
+                    nextPaycheckLine.style.display = 'none';
+                    futureNetWorthLine.style.display = 'none';
+                    projectedNextRentLine.style.display = 'none';
+                    projectedNextUtilsLine.style.display = 'none';
                     // Values for estimated_upcoming_pay will be 0 from API
-                    document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
-                    document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'Today!';
+                    document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay); // Will be 0.00
+                    document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'Today!'; // Should show actual payday
                 } else {
-                    nextPaycheckLine.style.display = 'block';
                     paydayMessageContainer.style.display = 'none';
+                    nextPaycheckLine.style.display = 'block';
                     futureNetWorthLine.style.display = 'block';
-                    projectedNextRentLine.style.display = 'block'; // Show new lines
-                    projectedNextUtilsLine.style.display = 'block'; // Show new lines
+                    projectedNextRentLine.style.display = 'block';
+                    projectedNextUtilsLine.style.display = 'block';
                     document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
                     document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'N/A';
                 }
 
+                // Populate projection lines (their values are already correctly calculated by API)
                 document.getElementById('future-net-worth').textContent = formatCurrency(data.future_net_worth);
-                // Populate new elements
                 document.getElementById('projected-nw-next-rent').textContent = formatCurrency(data.projected_net_worth_after_next_rent);
                 document.getElementById('projected-nw-next-utils').textContent = formatCurrency(data.projected_net_worth_after_next_utilities);
 
