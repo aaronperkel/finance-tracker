@@ -27,8 +27,8 @@ include 'templates/header.php';
                     <div id="future-net-worth-line">Future Net Worth (after next paycheck): <span id="future-net-worth"
                             class="currency">N/A</span></div>
                     <!-- New lines to be added below -->
-                    <div id="projected-next-rent-line">Projected NW (after Next Rent): <span id="projected-nw-next-rent" class="currency">N/A</span></div>
-                    <div id="projected-next-utils-line">Projected NW (after Next Utilities): <span id="projected-nw-next-utils" class="currency">N/A</span></div>
+                    <div id="projected-next-rent-line">Future Net Worth (after Next Rent): <span id="projected-nw-next-rent" class="currency">N/A</span></div>
+                    <div id="projected-next-utils-line">Future Net Worth (after Next Utilities): <span id="projected-nw-next-utils" class="currency">N/A</span></div>
                     <!-- End of new lines -->
                     <!-- <div class="debug-info">
                         Debug Pay Period: <span id="debug-pay-start">N/A</span> to <span id="debug-pay-end">N/A</span>
