@@ -29,11 +29,14 @@ $upcomingExpenses[] = [
 ];
 
 // --- Utilities ---
+$debug_info = []; // Array to hold debugging messages
+
 try {
     $userPersonName = $_ENV['UTILITIES_USER_PERSON_NAME'] ?? null;
+    $debug_info['user_person_name'] = $userPersonName;
 
     if (!$userPersonName) {
-        // Optionally, return an error or empty array if user person name is not set
+        $debug_info['error_user_name'] = "UTILITIES_USER_PERSON_NAME is not set in .env";
         // For now, just proceed, and the query won't match any utilities
         // error_log("UTILITIES_USER_PERSON_NAME is not set in .env");
     }
@@ -54,22 +57,21 @@ try {
         JOIN tblPeople p ON bo.personID = p.personID
         WHERE p.personName = :personName AND u.fldStatus = 'Unpaid'
     ";
+    // No date filtering for fldDue temporarily for debugging
 
-    // For simplicity, focusing on bills due this month and next month.
-    // More sophisticated date filtering could be added (e.g., bills due in the next X days)
-    $currentMonthStart = date('Y-m-01');
-    $nextMonthEnd = date('Y-m-t', strtotime('+1 month')); // 't' gives last day of month
-
-    // $sql .= " AND u.fldDue >= :currentMonthStart AND u.fldDue <= :nextMonthEnd";
-    // Commenting out date filtering for now to ensure we catch all unpaid, can be added if too many results
+    $debug_info['sql_query'] = $sql; // Log the query
 
     $stmt = $pdoUtilities->prepare($sql);
     $stmt->bindParam(':personName', $userPersonName, PDO::PARAM_STR);
-    // $stmt->bindParam(':currentMonthStart', $currentMonthStart, PDO::PARAM_STR);
-    // $stmt->bindParam(':nextMonthEnd', $nextMonthEnd, PDO::PARAM_STR);
+
+    $params_for_log = ['personName' => $userPersonName];
+    $debug_info['sql_params'] = $params_for_log; // Log parameters
+
     $stmt->execute();
 
     $utilityBills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $debug_info['raw_utility_bills_count'] = count($utilityBills);
+    $debug_info['raw_utility_bills'] = $utilityBills; // Log raw bills fetched
 
     foreach ($utilityBills as $bill) {
         $userShare = 0;
@@ -96,18 +98,25 @@ try {
             'type' => $bill['fldItem'],
             'amount' => $userShare,
             'emoji' => $emoji,
-            'notes' => 'Utility Bill - Your Share'
+            'notes' => 'Utility Bill - Your Share (Debug)' // Added Debug note
         ];
     }
 
 } catch (PDOException $e) {
-    // Log error and/or return an error message
-    error_log("Utilities DB Error: " . $e->getMessage());
-    // To keep the API functional even if utilities fail,
-    // we don't echo an error here, but could add an 'error' field in JSON.
-    $upcomingExpenses[] = ['error' => 'Could not retrieve utility data: ' . $e->getMessage()];
+    error_log("Utilities DB Error in api_get_upcoming_expenses.php: " . $e->getMessage());
+    $debug_info['pdo_exception'] = $e->getMessage();
+    // Add error to expenses array to make it visible on client side during debug
+    $upcomingExpenses[] = ['error_message' => 'Utilities DB Error: ' . $e->getMessage(), 'debug_trace' => $e->getTraceAsString()];
 }
 
+// Add debug info to the main response
+if (!empty($debug_info)) {
+    // Find a way to add this to the response.
+    // If $upcomingExpenses is always an array of objects, add debug_info as a special object.
+    // Or, wrap the response: echo json_encode(['data' => $upcomingExpenses, 'debug' => $debug_info]);
+    // For now, let's add it as a separate item in the expenses list for easy spotting.
+    $upcomingExpenses[] = ['_debug_utility_api' => $debug_info];
+}
 
 echo json_encode($upcomingExpenses);
 

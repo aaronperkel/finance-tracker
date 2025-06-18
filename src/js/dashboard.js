@@ -35,23 +35,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 const nextPaycheckLine = document.getElementById('next-paycheck-line');
                 const paydayMessageContainer = document.getElementById('payday-message-container');
                 const futureNetWorthLine = document.getElementById('future-net-worth-line');
+                // Get references to the new elements
+                const projectedNextRentLine = document.getElementById('projected-next-rent-line');
+                const projectedNextUtilsLine = document.getElementById('projected-next-utils-line');
 
                 if (data.is_pay_day) {
                     nextPaycheckLine.style.display = 'none';
                     paydayMessageContainer.style.display = 'block'; // Show "Pay Day!"
                     futureNetWorthLine.style.display = 'none'; // Hide future net worth on payday
+                    projectedNextRentLine.style.display = 'none'; // Hide new lines on payday
+                    projectedNextUtilsLine.style.display = 'none'; // Hide new lines on payday
                     // Values for estimated_upcoming_pay will be 0 from API
                     document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
                     document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'Today!';
                 } else {
-                    nextPaycheckLine.style.display = 'block'; // Or 'inline' or '' depending on original display
-                    paydayMessageContainer.style.display = 'none'; // Hide "Pay Day!"
-                    futureNetWorthLine.style.display = 'block'; // Show future net worth
+                    nextPaycheckLine.style.display = 'block';
+                    paydayMessageContainer.style.display = 'none';
+                    futureNetWorthLine.style.display = 'block';
+                    projectedNextRentLine.style.display = 'block'; // Show new lines
+                    projectedNextUtilsLine.style.display = 'block'; // Show new lines
                     document.getElementById('next-paycheck-amount').textContent = formatCurrency(data.estimated_upcoming_pay);
                     document.getElementById('next-paycheck-date').textContent = data.next_pay_date || 'N/A';
                 }
 
                 document.getElementById('future-net-worth').textContent = formatCurrency(data.future_net_worth);
+                // Populate new elements
+                document.getElementById('projected-nw-next-rent').textContent = formatCurrency(data.projected_net_worth_after_next_rent);
+                document.getElementById('projected-nw-next-utils').textContent = formatCurrency(data.projected_net_worth_after_next_utilities);
 
                 // document.getElementById('debug-pay-start').textContent = data.debug_pay_period_start || 'N/A';
                 // document.getElementById('debug-pay-end').textContent = data.debug_pay_period_end || 'N/A';

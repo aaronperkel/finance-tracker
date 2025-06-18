@@ -79,47 +79,62 @@ function applyHourStyles(dayCell, hoursSpan, hoursValue) {
 }
 
 function fetchAndDisplayExpenses(displayYear, displayMonth) { // month is 0-11 for JS Date
+    console.log('[Calendar Expenses] Fetching expenses for year:', displayYear, 'month:', displayMonth);
     fetch('api_get_upcoming_expenses.php')
         .then(response => {
+            console.log('[Calendar Expenses] Raw response object:', response);
             if (!response.ok) {
                 // Try to parse error body for more details
                 return response.json().then(errData => {
-                    throw new Error(`HTTP error ${response.status}: ${errData.error || 'Failed to fetch expenses'}`);
-                }).catch(() => { // If error body parsing fails
+                    console.error('[Calendar Expenses] API Error Response Data:', errData);
+                    throw new Error(`HTTP error ${response.status}: ${errData.error || errData.error_message || 'Failed to fetch expenses'}`);
+                }).catch((parsingError) => { // If error body parsing fails
+                    console.error('[Calendar Expenses] API Error Response Parsing Error:', parsingError);
                     throw new Error(`HTTP error ${response.status}: Failed to fetch expenses and parse error response.`);
                 });
             }
             return response.json();
         })
         .then(expenses => {
+            console.log('[Calendar Expenses] Parsed expenses payload:', expenses); // Log the whole payload
+
             if (!Array.isArray(expenses)) {
-                console.warn('Expenses data is not an array:', expenses);
+                console.warn('[Calendar Expenses] Expenses data is not an array:', expenses);
                 return;
             }
 
-            expenses.forEach(expense => {
-                if (!expense || typeof expense.date === 'undefined' || typeof expense.emoji === 'undefined') {
-                    // console.warn('Skipping invalid expense object:', expense);
-                    return; // Skip if essential data is missing
+            expenses.forEach((expense, index) => {
+                console.log(`[Calendar Expenses] Processing expense item ${index}:`, expense);
+
+                // Check for debug or error messages from the API
+                if (expense._debug_utility_api) {
+                    console.log('[Calendar Expenses] API Debug Info:', expense._debug_utility_api);
+                    return; // Don't try to render debug info as an expense
+                }
+                if (expense.error_message) {
+                    console.error('[Calendar Expenses] API returned an error for an item:', expense.error_message);
+                    // Optionally, display this error on the calendar page if appropriate
+                    return; // Don't try to render an error as an expense
                 }
 
-                // expense.date is 'YYYY-MM-DD'
-                // Important: Create Date objects in a way that avoids timezone issues.
-                // Appending T00:00:00 helps interpret the date in local time.
-                const expenseDate = new Date(expense.date + 'T00:00:00');
+                if (!expense || typeof expense.date === 'undefined' || typeof expense.emoji === 'undefined') {
+                    console.warn('[Calendar Expenses] Skipping invalid expense object (missing date or emoji):', expense);
+                    return;
+                }
 
-                // Check if the expense is within the currently displayed month and year
+                const expenseDate = new Date(expense.date + 'T00:00:00');
+                console.log(`[Calendar Expenses] Expense date: ${expense.date}, Parsed JS Date: ${expenseDate.toISOString()}`);
+
                 if (expenseDate.getFullYear() === displayYear && expenseDate.getMonth() === displayMonth) {
+                    console.log(`[Calendar Expenses] Expense ${expense.type} on ${expense.date} is in current display month.`);
                     const dayCell = calendarBody.querySelector(`td[data-date="${expense.date}"]`);
 
-                    // Ensure the cell exists and is part of the current month's display
                     if (dayCell && !dayCell.classList.contains('not-current-month')) {
-                        // Find or create a container for emojis to allow multiple emojis
+                        console.log(`[Calendar Expenses] Found dayCell for ${expense.date}:`, dayCell);
                         let emojiContainer = dayCell.querySelector('.expense-emoji-container');
                         if (!emojiContainer) {
                             emojiContainer = document.createElement('div');
                             emojiContainer.className = 'expense-emoji-container';
-                            // Simple styling to line them up, CSS can refine this
                             emojiContainer.style.display = 'flex';
                             emojiContainer.style.justifyContent = 'center';
                             emojiContainer.style.alignItems = 'center';
@@ -131,17 +146,24 @@ function fetchAndDisplayExpenses(displayYear, displayMonth) { // month is 0-11 f
                         individualEmojiSpan.className = 'expense-emoji-item';
                         individualEmojiSpan.textContent = expense.emoji;
                         individualEmojiSpan.title = `${expense.type}: $${parseFloat(expense.amount).toFixed(2)}`;
-                        individualEmojiSpan.style.margin = '0 1px'; // Small spacing between emojis
+                        individualEmojiSpan.style.margin = '0 1px';
 
                         emojiContainer.appendChild(individualEmojiSpan);
+                        console.log(`[Calendar Expenses] Appended emoji for ${expense.type} to cell ${expense.date}`);
+                    } else {
+                        if (!dayCell) {
+                            console.warn(`[Calendar Expenses] dayCell NOT FOUND for date: ${expense.date}`);
+                        } else {
+                            console.warn(`[Calendar Expenses] dayCell for ${expense.date} is in 'not-current-month'.`);
+                        }
                     }
+                } else {
+                    // console.log(`[Calendar Expenses] Expense ${expense.type} on ${expense.date} is NOT in current display month (Display: ${displayYear}-${displayMonth+1}).`);
                 }
             });
         })
         .catch(error => {
-            console.error('Error fetching or displaying expenses:', error.message);
-            // Optionally, display a user-friendly error message on the calendar page
-            // For example, by adding a small div with the error message.
+            console.error('[Calendar Expenses] Overall error fetching or displaying expenses:', error.message, error);
         });
 }
 

@@ -12,12 +12,16 @@ $response = [
     "estimated_state_tax" => 0,   // Optional new field
     "estimated_upcoming_pay" => 0, // This will be NET pay
     "next_pay_date" => null,
-    "future_net_worth" => 0,
+    "future_net_worth" => 0, // After current month deductions + next paycheck
+    "projected_net_worth_after_next_rent" => 0, // future_net_worth - next month's rent
+    "projected_net_worth_after_next_utilities" => 0, // projected_net_worth_after_next_rent - next month's utilities
     "net_worth_history" => [],
     "debug_pay_period_start" => null,
     "debug_pay_period_end" => null,
-    "current_month_deductions" => 0 // For transparency
+    "current_month_deductions" => 0
 ];
+
+$rentAmount = 1100.99; // Define rent amount for use
 
 try {
     // 3. Fetch Data and Perform Calculations
@@ -98,61 +102,56 @@ try {
         $item["networth"] = floatval($item["networth"]);
     }
 
-    // START: Calculate Current Month's Deductible Expenses (Rent & Utilities)
+    // This part populates $response["current_net_worth"] with raw snapshot net worth.
+
     $totalCurrentMonthExpenses = 0;
     $userPersonName = $_ENV['UTILITIES_USER_PERSON_NAME'] ?? null;
 
     // --- Rent for current month ---
-    $rentAmount = 1100.99;
-    // Rent is always considered for the 1st of the current month.
-    // For simplicity in this adjustment, we assume it's an upcoming fixed deduction for the month.
     $totalCurrentMonthExpenses += $rentAmount;
 
     // --- Utilities for current month ---
-    if ($userPersonName && isset($pdoUtilities)) { // Check if $pdoUtilities is available
-        $currentMonthStart = date('Y-m-01');
-        $currentMonthEnd = date('Y-m-t');
+    $currentMonthUtilitiesShare = 0;
+    if ($userPersonName && isset($pdoUtilities)) {
+        try {
+            $currentMonthStart = date('Y-m-01');
+            $currentMonthEnd = date('Y-m-t');
 
-        $sqlUtils = "
-            SELECT
-                u.fldTotal,
-                (SELECT COUNT(*) FROM tblBillOwes WHERE billID = u.pmkBillID) AS totalSharers
-            FROM tblUtilities u
-            JOIN tblBillOwes bo ON u.pmkBillID = bo.billID
-            JOIN tblPeople p ON bo.personID = p.personID
-            WHERE p.personName = :personName
-              AND u.fldStatus = 'Unpaid'
-              AND u.fldDue BETWEEN :currentMonthStart AND :currentMonthEnd
-        ";
-        $stmtUtils = $pdoUtilities->prepare($sqlUtils);
-        $stmtUtils->bindParam(':personName', $userPersonName, PDO::PARAM_STR);
-        $stmtUtils->bindParam(':currentMonthStart', $currentMonthStart, PDO::PARAM_STR);
-        $stmtUtils->bindParam(':currentMonthEnd', $currentMonthEnd, PDO::PARAM_STR);
-        $stmtUtils->execute();
-        $utilityBillsThisMonth = $stmtUtils->fetchAll(PDO::FETCH_ASSOC);
+            $sqlUtilsCurrent = "
+                SELECT u.fldTotal
+                FROM tblUtilities u
+                JOIN tblBillOwes bo ON u.pmkBillID = bo.billID
+                JOIN tblPeople p ON bo.personID = p.personID
+                WHERE p.personName = :personName
+                  AND u.fldStatus = 'Unpaid'
+                  AND u.fldDue BETWEEN :currentMonthStart AND :currentMonthEnd
+            ";
+            $stmtUtilsCurrent = $pdoUtilities->prepare($sqlUtilsCurrent);
+            $stmtUtilsCurrent->bindParam(':personName', $userPersonName, PDO::PARAM_STR);
+            $stmtUtilsCurrent->bindParam(':currentMonthStart', $currentMonthStart, PDO::PARAM_STR);
+            $stmtUtilsCurrent->bindParam(':currentMonthEnd', $currentMonthEnd, PDO::PARAM_STR);
+            $stmtUtilsCurrent->execute();
+            $utilityBillsThisMonth = $stmtUtilsCurrent->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($utilityBillsThisMonth as $bill) {
-            $userShare = 0;
-            if ($bill['fldTotal'] > 0) {
-                // Using 1/3rd as per original explicit request for user's share
-                $userShare = round(floatval($bill['fldTotal']) / 3, 2);
+            foreach ($utilityBillsThisMonth as $bill) {
+                if ($bill['fldTotal'] > 0) {
+                    $currentMonthUtilitiesShare += round(floatval($bill['fldTotal']) / 3, 2);
+                }
             }
-            $totalCurrentMonthExpenses += $userShare;
+        } catch (PDOException $e) {
+            error_log("PDOException in api_financial_summary.php (Current Month Utilities): " . $e->getMessage());
+            // currentMonthUtilitiesShare remains 0
         }
     }
+    $totalCurrentMonthExpenses += $currentMonthUtilitiesShare;
     $response["current_month_deductions"] = round($totalCurrentMonthExpenses, 2);
-    // END: Calculate Current Month's Deductible Expenses
 
     // Adjust current_net_worth (which was from snapshot)
-    // $latest_snapshot_id is defined earlier when fetching snapshot data.
-    // We need to ensure $response["current_net_worth"] was actually populated.
-    // The original code sets $response["current_net_worth"] to 0 initially,
-    // and then to the snapshot value if $latest_snapshot_id exists.
-    // So, this check is implicitly handled. If no snapshot, current_net_worth is 0,
-    // and subtracting expenses would make it negative, which is arithmetically correct.
-    $response["current_net_worth"] = floatval($response["current_net_worth"]) - $totalCurrentMonthExpenses;
-    $response["current_net_worth"] = round(floatval($response["current_net_worth"]), 2);
-
+    if ($latest_snapshot_id) {
+        $response["current_net_worth"] = floatval($response["current_net_worth"]) - $totalCurrentMonthExpenses;
+        $response["current_net_worth"] = round(floatval($response["current_net_worth"]), 2);
+    }
+    // $response["current_net_worth"] now matches definition #1 (Snapshot - This Month's Rent & Utilities)
 
     // Estimated Upcoming Pay and Next Pay Date
     // Remove pay_day_1 and pay_day_2 from query as they are no longer needed
@@ -321,21 +320,61 @@ try {
     // as the pay just received would ideally be part of a new snapshot soon.
     // If not payday, it's adjusted current + upcoming pay.
     if ($response["is_pay_day"]) {
-         // On payday, the "future" net worth after this pay event is essentially the current adjusted net worth.
-         // The pay received today should ideally be reflected in a new snapshot.
-         // So, no further addition of estimated_upcoming_pay (which would be 0 anyway as per logic).
         $response["future_net_worth"] = $response["current_net_worth"];
     } else {
         $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
     }
 
+    // projected_net_worth_after_next_rent - matches definition #3
+    // Assumes rent is paid from the 'future_net_worth' value.
+    $response["projected_net_worth_after_next_rent"] = round($response["future_net_worth"] - $rentAmount, 2);
+
+    // projected_net_worth_after_next_utilities - matches definition #4
+    $nextMonthUtilitiesShare = 0;
+    if ($userPersonName && isset($pdoUtilities)) {
+        try {
+            $nextMonthStart = date('Y-m-01', strtotime('+1 month'));
+            $nextMonthEnd = date('Y-m-t', strtotime('+1 month'));
+
+            $sqlUtilsNext = "
+                SELECT u.fldTotal
+                FROM tblUtilities u
+                JOIN tblBillOwes bo ON u.pmkBillID = bo.billID
+                JOIN tblPeople p ON bo.personID = p.personID
+                WHERE p.personName = :personName
+                  AND u.fldStatus = 'Unpaid'
+                  AND u.fldDue BETWEEN :nextMonthStart AND :nextMonthEnd
+            ";
+            $stmtUtilsNext = $pdoUtilities->prepare($sqlUtilsNext);
+            $stmtUtilsNext->bindParam(':personName', $userPersonName, PDO::PARAM_STR);
+            $stmtUtilsNext->bindParam(':nextMonthStart', $nextMonthStart, PDO::PARAM_STR);
+            $stmtUtilsNext->bindParam(':nextMonthEnd', $nextMonthEnd, PDO::PARAM_STR);
+            $stmtUtilsNext->execute();
+            $utilityBillsNextMonth = $stmtUtilsNext->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($utilityBillsNextMonth as $bill) {
+                if ($bill['fldTotal'] > 0) {
+                    $nextMonthUtilitiesShare += round(floatval($bill['fldTotal']) / 3, 2);
+                }
+            }
+        } catch (PDOException $e) {
+            error_log("PDOException in api_financial_summary.php (Next Month Utilities): " . $e->getMessage());
+            // nextMonthUtilitiesShare remains 0
+        }
+    }
+    $response["projected_net_worth_after_next_utilities"] = round($response["projected_net_worth_after_next_rent"] - $nextMonthUtilitiesShare, 2);
+
+
     echo json_encode($response);
 
-} catch (PDOException $e) {
+} catch (PDOException $e) { // Main catch for finance DB issues
     http_response_code(500);
+    // Log the main finance DB error, but don't overwrite if specific utility errors were already logged.
+    error_log("Main PDOException in api_financial_summary.php: " . $e->getMessage());
     echo json_encode(['error' => 'Database error: ' . $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 } catch (Exception $e) {
     http_response_code(500);
+    error_log("General Exception in api_financial_summary.php: " . $e->getMessage());
     echo json_encode(['error' => 'General error: ' . $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 }
 ?>
