@@ -145,7 +145,17 @@ function fetchAndDisplayExpenses(displayYear, displayMonth) { // month is 0-11 f
                         let individualEmojiSpan = document.createElement('span');
                         individualEmojiSpan.className = 'expense-emoji-item';
                         individualEmojiSpan.textContent = expense.emoji;
-                        individualEmojiSpan.title = `${expense.type}: $${parseFloat(expense.amount).toFixed(2)}`;
+
+                        // Original title:
+                        // individualEmojiSpan.title = `${expense.type}: $${parseFloat(expense.amount).toFixed(2)}`;
+
+                        // New title logic:
+                        let tooltipText = `${expense.type}: $${parseFloat(expense.amount).toFixed(2)}`;
+                        if (expense.status) { // Check if status field exists (it should for utilities from updated API)
+                            tooltipText += ` (${expense.status})`; // Append status, e.g., (Paid) or (Unpaid)
+                        }
+                        individualEmojiSpan.title = tooltipText;
+
                         individualEmojiSpan.style.margin = '0 1px';
 
                         emojiContainer.appendChild(individualEmojiSpan);

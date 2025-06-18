@@ -27,9 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.error) { // Handle application-level errors from API
                     throw new Error(`API Error: ${data.error}`);
                 }
-                document.getElementById('current-net-worth').textContent = formatCurrency(data.current_net_worth); // Raw snapshot
-                // Populate the new element
-                document.getElementById('effective-current-net-worth').textContent = formatCurrency(data.net_worth_after_current_month_expenses);
+                document.getElementById('current-net-worth').textContent = formatCurrency(data.current_net_worth);
+                // REMOVED: document.getElementById('effective-current-net-worth').textContent = ...
 
                 document.getElementById('total-cash').textContent = formatCurrency(data.total_cash_on_hand);
                 document.getElementById('receivables-balance').textContent = formatCurrency(data.receivables_balance);
