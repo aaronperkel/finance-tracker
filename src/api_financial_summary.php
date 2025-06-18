@@ -16,6 +16,7 @@ $response = [
     "net_worth_history" => [],
     "debug_pay_period_start" => null,
     "debug_pay_period_end" => null,
+    "current_month_deductions" => 0 // For transparency
 ];
 
 try {
@@ -96,6 +97,61 @@ try {
     foreach ($response["net_worth_history"] as &$item) {
         $item["networth"] = floatval($item["networth"]);
     }
+
+    // START: Calculate Current Month's Deductible Expenses (Rent & Utilities)
+    $totalCurrentMonthExpenses = 0;
+    $userPersonName = $_ENV['UTILITIES_USER_PERSON_NAME'] ?? null;
+
+    // --- Rent for current month ---
+    $rentAmount = 1100.99;
+    // Rent is always considered for the 1st of the current month.
+    // For simplicity in this adjustment, we assume it's an upcoming fixed deduction for the month.
+    $totalCurrentMonthExpenses += $rentAmount;
+
+    // --- Utilities for current month ---
+    if ($userPersonName && isset($pdoUtilities)) { // Check if $pdoUtilities is available
+        $currentMonthStart = date('Y-m-01');
+        $currentMonthEnd = date('Y-m-t');
+
+        $sqlUtils = "
+            SELECT
+                u.fldTotal,
+                (SELECT COUNT(*) FROM tblBillOwes WHERE billID = u.pmkBillID) AS totalSharers
+            FROM tblUtilities u
+            JOIN tblBillOwes bo ON u.pmkBillID = bo.billID
+            JOIN tblPeople p ON bo.personID = p.personID
+            WHERE p.personName = :personName
+              AND u.fldStatus = 'Unpaid'
+              AND u.fldDue BETWEEN :currentMonthStart AND :currentMonthEnd
+        ";
+        $stmtUtils = $pdoUtilities->prepare($sqlUtils);
+        $stmtUtils->bindParam(':personName', $userPersonName, PDO::PARAM_STR);
+        $stmtUtils->bindParam(':currentMonthStart', $currentMonthStart, PDO::PARAM_STR);
+        $stmtUtils->bindParam(':currentMonthEnd', $currentMonthEnd, PDO::PARAM_STR);
+        $stmtUtils->execute();
+        $utilityBillsThisMonth = $stmtUtils->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($utilityBillsThisMonth as $bill) {
+            $userShare = 0;
+            if ($bill['fldTotal'] > 0) {
+                // Using 1/3rd as per original explicit request for user's share
+                $userShare = round(floatval($bill['fldTotal']) / 3, 2);
+            }
+            $totalCurrentMonthExpenses += $userShare;
+        }
+    }
+    $response["current_month_deductions"] = round($totalCurrentMonthExpenses, 2);
+    // END: Calculate Current Month's Deductible Expenses
+
+    // Adjust current_net_worth (which was from snapshot)
+    // $latest_snapshot_id is defined earlier when fetching snapshot data.
+    // We need to ensure $response["current_net_worth"] was actually populated.
+    // The original code sets $response["current_net_worth"] to 0 initially,
+    // and then to the snapshot value if $latest_snapshot_id exists.
+    // So, this check is implicitly handled. If no snapshot, current_net_worth is 0,
+    // and subtracting expenses would make it negative, which is arithmetically correct.
+    $response["current_net_worth"] = floatval($response["current_net_worth"]) - $totalCurrentMonthExpenses;
+    $response["current_net_worth"] = round(floatval($response["current_net_worth"]), 2);
 
 
     // Estimated Upcoming Pay and Next Pay Date
@@ -259,8 +315,19 @@ try {
         }
     }
 
-    // Future Net Worth - always use the (potentially net) estimated_upcoming_pay
-    $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
+    // Future Net Worth calculation
+    // It should use the *adjusted* current_net_worth
+    // If it's payday, future_net_worth is effectively the current (adjusted) net worth,
+    // as the pay just received would ideally be part of a new snapshot soon.
+    // If not payday, it's adjusted current + upcoming pay.
+    if ($response["is_pay_day"]) {
+         // On payday, the "future" net worth after this pay event is essentially the current adjusted net worth.
+         // The pay received today should ideally be reflected in a new snapshot.
+         // So, no further addition of estimated_upcoming_pay (which would be 0 anyway as per logic).
+        $response["future_net_worth"] = $response["current_net_worth"];
+    } else {
+        $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
+    }
 
     echo json_encode($response);
 

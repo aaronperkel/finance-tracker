@@ -120,3 +120,31 @@ We welcome contributions to enhance the functionality and usability of this appl
 This project is licensed under the MIT License.
 
 For the full license text, please see the [LICENSE](LICENSE) file in the repository.
+
+## Additional Configuration for Rent & Utilities Tracking
+
+To enable tracking of rent and utility expenses, you need to add the following variables to your `.env` file:
+
+*   `DBHOSTUTILITIES`: The hostname for your utilities database (e.g., `webdb.uvm.edu`). Defaults to `webdb.uvm.edu` if not set.
+*   `DBNAMEUTILITIES`: The name of your utilities database.
+*   `DBUSERUTILITIES`: The username for accessing the utilities database.
+*   `DBPASSUTILITIES`: The password for the utilities database user.
+*   `UTILITIES_USER_PERSON_NAME`: Your name as it appears in the `personName` column of the `tblPeople` table within your utilities database. This is used to identify your share of utility bills.
+
+**Note:** The application assumes your utilities database contains tables named `tblUtilities`, `tblPeople`, and `tblBillOwes` with a schema compatible with the project's requirements for utility tracking.
+
+## New Features: Rent and Utility Integration
+
+Once configured, the application will provide the following new features:
+
+*   **Calendar Emojis:**
+    *   Rent due on the 1st of each month will be indicated on the calendar with a 🏡 (house) emoji.
+    *   Upcoming utility bills (for your share, marked as 'Unpaid' and due in the current or next displayed month) will be shown with relevant emojis (e.g., 🔥 for Gas, 💡 for Electric, 🌐 for Internet, 💰 for others).
+    *   Hovering over an emoji will show a tooltip with the expense type and amount.
+
+*   **Adjusted Net Worth Display:**
+    *   The "Current Net Worth" figure displayed on the dashboard is now an *effective* net worth. It is calculated by taking your latest snapshot's net worth and subtracting:
+        *   The fixed monthly rent amount ($1100.99).
+        *   Your share (assumed to be 1/3rd) of any utility bills due in the current calendar month.
+    *   The "Future Net Worth" projection also incorporates these deductions.
+    *   The "Current Month Deductions" field in the `api_financial_summary.php` response shows the total amount deducted for the current month's rent and utilities.

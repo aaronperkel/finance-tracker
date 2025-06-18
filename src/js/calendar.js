@@ -78,6 +78,73 @@ function applyHourStyles(dayCell, hoursSpan, hoursValue) {
     }
 }
 
+function fetchAndDisplayExpenses(displayYear, displayMonth) { // month is 0-11 for JS Date
+    fetch('api_get_upcoming_expenses.php')
+        .then(response => {
+            if (!response.ok) {
+                // Try to parse error body for more details
+                return response.json().then(errData => {
+                    throw new Error(`HTTP error ${response.status}: ${errData.error || 'Failed to fetch expenses'}`);
+                }).catch(() => { // If error body parsing fails
+                    throw new Error(`HTTP error ${response.status}: Failed to fetch expenses and parse error response.`);
+                });
+            }
+            return response.json();
+        })
+        .then(expenses => {
+            if (!Array.isArray(expenses)) {
+                console.warn('Expenses data is not an array:', expenses);
+                return;
+            }
+
+            expenses.forEach(expense => {
+                if (!expense || typeof expense.date === 'undefined' || typeof expense.emoji === 'undefined') {
+                    // console.warn('Skipping invalid expense object:', expense);
+                    return; // Skip if essential data is missing
+                }
+
+                // expense.date is 'YYYY-MM-DD'
+                // Important: Create Date objects in a way that avoids timezone issues.
+                // Appending T00:00:00 helps interpret the date in local time.
+                const expenseDate = new Date(expense.date + 'T00:00:00');
+
+                // Check if the expense is within the currently displayed month and year
+                if (expenseDate.getFullYear() === displayYear && expenseDate.getMonth() === displayMonth) {
+                    const dayCell = calendarBody.querySelector(`td[data-date="${expense.date}"]`);
+
+                    // Ensure the cell exists and is part of the current month's display
+                    if (dayCell && !dayCell.classList.contains('not-current-month')) {
+                        // Find or create a container for emojis to allow multiple emojis
+                        let emojiContainer = dayCell.querySelector('.expense-emoji-container');
+                        if (!emojiContainer) {
+                            emojiContainer = document.createElement('div');
+                            emojiContainer.className = 'expense-emoji-container';
+                            // Simple styling to line them up, CSS can refine this
+                            emojiContainer.style.display = 'flex';
+                            emojiContainer.style.justifyContent = 'center';
+                            emojiContainer.style.alignItems = 'center';
+                            emojiContainer.style.marginTop = '3px';
+                            dayCell.appendChild(emojiContainer);
+                        }
+
+                        let individualEmojiSpan = document.createElement('span');
+                        individualEmojiSpan.className = 'expense-emoji-item';
+                        individualEmojiSpan.textContent = expense.emoji;
+                        individualEmojiSpan.title = `${expense.type}: $${parseFloat(expense.amount).toFixed(2)}`;
+                        individualEmojiSpan.style.margin = '0 1px'; // Small spacing between emojis
+
+                        emojiContainer.appendChild(individualEmojiSpan);
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching or displaying expenses:', error.message);
+            // Optionally, display a user-friendly error message on the calendar page
+            // For example, by adding a small div with the error message.
+        });
+}
+
 // This function will now handle the actual DOM manipulation for calendar cells
 function renderCalendarInternal(month, year, paydays = []) {
     calendarBody.innerHTML = ''; // Clear previous calendar
@@ -159,6 +226,9 @@ function renderCalendarInternal(month, year, paydays = []) {
         if (date > daysInMonth && i < 5) break; // Optimization if all days fit in less than 6 weeks
     }
     fetchAndDisplayHours(month + 1, year); // API uses 1-12 for month
+
+    // Add the new call for expenses
+    fetchAndDisplayExpenses(year, month); // year (YYYY), month (0-11)
 }
 
 // New renderCalendar function that fetches paydays first
