@@ -3,6 +3,7 @@ require __DIR__ . '/../vendor/autoload.php'; // Adjusted path for vendor
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../'); // Adjusted path for .env
 $dotenv->load();
+date_default_timezone_set('America/New_York');
 
 // Connection for Finance Database
 $databaseNameFinance = $_ENV['DBNAMEFINANCE'];
