@@ -364,9 +364,153 @@ function openEditModal(dateStr, currentHoursText, isDefault) {
 
     modalFeedbackEl.textContent = '';
     modalFeedbackEl.className = '';
+
+    // Rent Button Logic
+    // The modal variable itself is the modal root, pass its content area if it has one, or modal itself.
+    // Assuming 'modal' is the element whose content we modify.
+    setupRentButton(modal.querySelector('.modal-content') || modal, dateStr); // Pass modal content part or modal itself
+
     modal.style.display = 'block';
     modalHoursInput.focus();
 }
+
+// Helper to format date as YYYY-MM-01 for rent month
+function getRentMonthString(dateStr) {
+    // dateStr is expected to be YYYY-MM-DD
+    const dateParts = dateStr.split('-');
+    // Ensure month is two digits for the first day of the month string
+    return `${dateParts[0]}-${dateParts[1]}-01`;
+}
+
+// Helper to get today's date as YYYY-MM-DD
+function getTodaysDateString() {
+    const todayDate = new Date();
+    const yyyy = todayDate.getFullYear();
+    const mm = String(todayDate.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const dd = String(todayDate.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+async function setupRentButton(modalContentElement, clickedDateStr) {
+    const dateObj = new Date(clickedDateStr + 'T00:00:00'); // Ensure local time interpretation
+    const dayOfMonth = dateObj.getDate(); // Use getDate() which is 1-31
+
+    const rentButtonContainerId = 'rent-button-container';
+    let rentButtonContainer = modalContentElement.querySelector(`#${rentButtonContainerId}`);
+
+    // Remove existing container if it exists, to ensure clean state
+    if (rentButtonContainer) {
+        rentButtonContainer.remove();
+    }
+
+    if (dayOfMonth === 1) {
+        rentButtonContainer = document.createElement('div');
+        rentButtonContainer.id = rentButtonContainerId;
+        rentButtonContainer.style.marginTop = '10px';
+
+        // Try to insert before a specific element, e.g., the save/cancel buttons or feedback
+        // This depends on modal structure. A common pattern is a footer for buttons.
+        // For now, appending to modalContentElement. Adjust if modal has specific structure.
+        // Let's find the save button or feedback and insert before it.
+        const saveButton = modalContentElement.querySelector('#save-hours-btn'); // Assuming save button exists
+        if (saveButton && saveButton.parentNode) {
+             saveButton.parentNode.insertBefore(rentButtonContainer, saveButton);
+        } else {
+            modalContentElement.appendChild(rentButtonContainer); // Fallback
+        }
+
+
+        rentButtonContainer.innerHTML = '<button id="rentToggleButton" class="button">Loading Rent Status...</button>';
+        const rentToggleButton = rentButtonContainer.querySelector('#rentToggleButton');
+        const rentMonthForAPI = getRentMonthString(clickedDateStr);
+
+        try {
+            rentToggleButton.disabled = true; // Disable while loading
+            const response = await fetch(`src/get_rent_status.php?rent_month=${rentMonthForAPI}`);
+            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+            const data = await response.json();
+            rentToggleButton.disabled = false; // Re-enable
+
+            if (data.is_paid) {
+                rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${data.details.amount} on ${data.details.paid_date})`;
+                rentToggleButton.dataset.rentStatus = 'paid';
+                rentToggleButton.dataset.rentAmount = data.details.amount;
+            } else {
+                rentToggleButton.textContent = 'Mark Current Month Rent Paid';
+                rentToggleButton.dataset.rentStatus = 'unpaid';
+            }
+
+            rentToggleButton.onclick = async () => {
+                rentToggleButton.disabled = true;
+                const currentStatus = rentToggleButton.dataset.rentStatus;
+                // currentModalDate should be set when modal opens, it's the YYYY-MM-DD of the clicked day
+                const monthToActOn = getRentMonthString(currentModalDate);
+
+                if (currentStatus === 'unpaid') {
+                    const rentAmountToPay = parseFloat(document.getElementById('rent-amount-input-field')?.value || prompt("Enter rent amount:", "1100.99") || "1100.99");
+                    const paidDate = getTodaysDateString();
+
+                    try {
+                        const markPaidResponse = await fetch('src/mark_rent_paid.php', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({rent_month: monthToActOn, paid_date: paidDate, amount: rentAmountToPay})
+                        });
+                        if (!markPaidResponse.ok) throw new Error(`HTTP error ${markPaidResponse.status}`);
+                        const markPaidData = await markPaidResponse.json();
+
+                        if (markPaidData.success) {
+                            rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${rentAmountToPay.toFixed(2)} on ${paidDate})`;
+                            rentToggleButton.dataset.rentStatus = 'paid';
+                            rentToggleButton.dataset.rentAmount = rentAmountToPay;
+                            if (window.refreshFinancialSummary) window.refreshFinancialSummary();
+                        } else { throw new Error(markPaidData.error || 'Unknown error'); }
+                    } catch (err) {
+                        modalFeedbackEl.textContent = 'Error marking rent paid: ' + err.message;
+                        modalFeedbackEl.className = 'error';
+                    }
+
+                } else { // currentStatus === 'paid'
+                    try {
+                        const deleteResponse = await fetch('src/delete_rent_payment.php', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({rent_month: monthToActOn})
+                        });
+                        if (!deleteResponse.ok) throw new Error(`HTTP error ${deleteResponse.status}`);
+                        const deleteData = await deleteResponse.json();
+
+                        if (deleteData.success) {
+                            rentToggleButton.textContent = 'Mark Current Month Rent Paid';
+                            rentToggleButton.dataset.rentStatus = 'unpaid';
+                            if (window.refreshFinancialSummary) window.refreshFinancialSummary();
+                        } else { throw new Error(deleteData.error || 'Unknown error'); }
+                    } catch (err) {
+                         modalFeedbackEl.textContent = 'Error marking rent unpaid: ' + err.message;
+                         modalFeedbackEl.className = 'error';
+                    }
+                }
+                rentToggleButton.disabled = false;
+                 // Clear feedback after a short delay if successful, or rely on new feedback
+                setTimeout(() => {
+                    if (modalFeedbackEl.className !== 'error') modalFeedbackEl.textContent = '';
+                }, 2000);
+            };
+
+        } catch (error) {
+            console.error('Error in setupRentButton:', error);
+            if(rentToggleButton) {
+                rentToggleButton.textContent = 'Error loading status';
+                rentToggleButton.disabled = false;
+            }
+            modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message;
+            modalFeedbackEl.className = 'error';
+        }
+    }
+    // If not the 1st of the month, any existing rentButtonContainer (if not removed above) should be cleared.
+    // The new logic of removing/re-creating container handles this.
+}
+
 
 cancelHoursBtn.addEventListener('click', () => {
     modal.style.display = 'none';

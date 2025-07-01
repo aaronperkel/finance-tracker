@@ -125,4 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initial data load
     fetchFinancialData();
+
+    // Expose a global function to refresh data, e.g., after rent is marked paid
+    window.refreshFinancialSummary = fetchFinancialData;
 });
