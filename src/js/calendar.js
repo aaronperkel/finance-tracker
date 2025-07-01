@@ -427,6 +427,17 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
 
         try {
             rentToggleButton.disabled = true; // Disable while loading
+
+            // ON-SCREEN DEBUG for rentMonthForAPI:
+            if (modalFeedbackEl) { // Check if feedback element exists
+                modalFeedbackEl.textContent = `Debug: rentMonthForAPI = ${rentMonthForAPI}. Attempting fetch...`;
+                modalFeedbackEl.className = 'info'; // Use a neutral class for info
+            } else {
+                // If modalFeedbackEl is not found, this is an issue with modal structure assumptions
+                alert(`Debug: rentMonthForAPI = ${rentMonthForAPI}. Modal feedback element not found.`);
+            }
+            // console.log('[CalendarJS] Rent Status Fetch: Attempting to fetch for rent_month =', rentMonthForAPI); // Original DEBUG LINE
+
             const response = await fetch(`src/get_rent_status.php?rent_month=${rentMonthForAPI}`);
 
             rentToggleButton.disabled = false; // Re-enable after fetch attempt
