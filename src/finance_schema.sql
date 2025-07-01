@@ -38,3 +38,12 @@ CREATE TABLE app_settings (
 --
 -- Example for app_settings:
 -- INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_rate', '20.00');
+
+CREATE TABLE rent_payments (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  rent_month   DATE          NOT NULL COMMENT 'First day of the month for which rent is paid (e.g., YYYY-MM-01)',
+  paid_date    DATE          NOT NULL COMMENT 'Actual date rent was paid',
+  amount       DECIMAL(10,2) NOT NULL,
+  created_at   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uniq_rent_month` (`rent_month`) COMMENT 'Ensure only one payment record per rent month'
+);
