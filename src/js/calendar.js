@@ -408,15 +408,16 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
         rentButtonContainer.id = rentButtonContainerId;
         rentButtonContainer.style.marginTop = '10px';
 
-        // Try to insert before a specific element, e.g., the save/cancel buttons or feedback
-        // This depends on modal structure. A common pattern is a footer for buttons.
-        // For now, appending to modalContentElement. Adjust if modal has specific structure.
-        // Let's find the save button or feedback and insert before it.
-        const saveButton = modalContentElement.querySelector('#save-hours-btn'); // Assuming save button exists
-        if (saveButton && saveButton.parentNode) {
-             saveButton.parentNode.insertBefore(rentButtonContainer, saveButton);
+        // New placement logic: Insert before the div with class 'modal-buttons'
+        const modalButtonsDiv = modalContentElement.querySelector('.modal-buttons');
+        if (modalButtonsDiv && modalButtonsDiv.parentNode) {
+            modalButtonsDiv.parentNode.insertBefore(rentButtonContainer, modalButtonsDiv);
         } else {
-            modalContentElement.appendChild(rentButtonContainer); // Fallback
+            // Fallback if '.modal-buttons' isn't found directly under modalContentElement
+            // or if modalContentElement is the direct parent we want to append to.
+            // This might happen if querySelector is on modal itself and .modal-buttons is deeper.
+            // For your provided HTML, modalContentElement is .modal-content, and .modal-buttons is its child.
+            modalContentElement.appendChild(rentButtonContainer);
         }
 
 
@@ -427,9 +428,20 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
         try {
             rentToggleButton.disabled = true; // Disable while loading
             const response = await fetch(`src/get_rent_status.php?rent_month=${rentMonthForAPI}`);
-            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-            const data = await response.json();
-            rentToggleButton.disabled = false; // Re-enable
+
+            rentToggleButton.disabled = false; // Re-enable after fetch attempt
+
+            if (!response.ok) {
+                let errorText = `HTTP error ${response.status}`;
+                try {
+                    const errorData = await response.text(); // Get raw text for debugging
+                    console.error("Raw error response from get_rent_status:", errorData);
+                    errorText += ` - ${errorData.substring(0, 100)}`; // Show first 100 chars
+                } catch (e) { /* ignore text parsing error */ }
+                throw new Error(errorText);
+            }
+
+            const data = await response.json(); // Now try to parse as JSON
 
             if (data.is_paid) {
                 rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${data.details.amount} on ${data.details.paid_date})`;
@@ -499,12 +511,12 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
 
         } catch (error) {
             console.error('Error in setupRentButton:', error);
-            if(rentToggleButton) {
-                rentToggleButton.textContent = 'Error loading status';
-                rentToggleButton.disabled = false;
-            }
-            modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message;
+            modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message; // error.message will now include more details if !response.ok
             modalFeedbackEl.className = 'error';
+            if(rentToggleButton) { // Ensure button exists before trying to modify it
+                rentToggleButton.textContent = 'Error loading status';
+                rentToggleButton.disabled = false; // Ensure it's re-enabled on error too
+            }
         }
     }
     // If not the 1st of the month, any existing rentButtonContainer (if not removed above) should be cleared.
