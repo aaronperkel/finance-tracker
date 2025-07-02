@@ -72,7 +72,7 @@ function applyHourStyles(dayCell, hoursSpan, hoursValue) {
 }
 
 function fetchAndDisplayExpenses(displayYear, displayMonth) {
-    fetch('/src/api_get_upcoming_expenses.php') // Using absolute path
+    fetch('../api_get_upcoming_expenses.php') // Using absolute path
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errData => {
@@ -177,7 +177,7 @@ function renderCalendarInternal(month, year, paydays = []) {
 
 function renderCalendar(month, year) {
     currentMonthYearEl.textContent = `${monthNames[month]} ${year}`;
-    fetch(`/src/api_get_paydays.php?year=${year}&month=${month + 1}`) // Absolute path
+    fetch(`../api_get_paydays.php?year=${year}&month=${month + 1}`) // Absolute path
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errData => { throw new Error(`HTTP ${response.status}: ${errData.error || 'Failed to fetch paydays'}`); })
@@ -193,7 +193,7 @@ function renderCalendar(month, year) {
 }
 
 function fetchAndDisplayHours(apiMonth, apiYear) {
-    fetch(`/src/api_logged_hours.php?month=${apiMonth}&year=${apiYear}`) // Absolute path
+    fetch(`../api_logged_hours.php?month=${apiMonth}&year=${apiYear}`) // Absolute path
         .then(response => { if (!response.ok) throw new Error('Network error fetching hours.'); return response.json(); })
         .then(data => {
             for (let dayVal = 1; dayVal <= new Date(apiYear, apiMonth, 0).getDate(); dayVal++) {
