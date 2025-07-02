@@ -425,7 +425,10 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
 
         rentButtonContainer.innerHTML = '<button id="rentToggleButton" class="button">Loading Rent Status...</button>';
         const rentToggleButton = rentButtonContainer.querySelector('#rentToggleButton');
+
+        alert('[Debug] Before getRentMonthString. clickedDateStr: ' + clickedDateStr);
         const rentMonthForAPI = getRentMonthString(clickedDateStr);
+        alert('[Debug] After getRentMonthString. rentMonthForAPI: ' + rentMonthForAPI); // <<< THIS IS THE CRITICAL ALERT NOW
 
         try {
             rentToggleButton.disabled = true; // Disable while loading
