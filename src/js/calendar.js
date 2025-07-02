@@ -431,33 +431,22 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
         alert('[Debug] After getRentMonthString. rentMonthForAPI: ' + rentMonthForAPI); // <<< THIS IS THE CRITICAL ALERT NOW
 
         try {
-            rentToggleButton.disabled = true; // Disable while loading
+            alert('[Debug] TRY_BLOCK_START');
+            rentToggleButton.disabled = true;
+            alert('[Debug] TRY_AFTER_BUTTON_DISABLE');
 
-            // ON-SCREEN DEBUG for rentMonthForAPI:
-            if (modalFeedbackEl) { // Check if feedback element exists
-                modalFeedbackEl.textContent = `Debug: rentMonthForAPI = ${rentMonthForAPI}. Attempting fetch...`;
-                modalFeedbackEl.className = 'info'; // Use a neutral class for info
-            } else {
-                // If modalFeedbackEl is not found, this is an issue with modal structure assumptions
-                alert(`Debug: rentMonthForAPI = ${rentMonthForAPI}. Modal feedback element not found.`);
-            }
-            // console.log('[CalendarJS] Rent Status Fetch: Attempting to fetch for rent_month =', rentMonthForAPI); // Original DEBUG LINE
+            const fetchUrl = `src/get_rent_status.php?rent_month=${rentMonthForAPI}`;
+            alert('[Debug] TRY_BEFORE_FETCH. URL: ' + fetchUrl);
+            const response = await fetch(fetchUrl);
+            alert('[Debug] TRY_AFTER_FETCH. Status: ' + response.status + ', OK: ' + response.ok);
 
-            const response = await fetch(`src/get_rent_status.php?rent_month=${rentMonthForAPI}`);
+            const responseText = await response.text();
+            alert('[Debug] TRY_AFTER_RESPONSE_TEXT. Text: ' + responseText.substring(0, 200));
 
-            rentToggleButton.disabled = false; // Re-enable after fetch attempt
+            const data = JSON.parse(responseText);
+            alert('[Debug] TRY_AFTER_JSON_PARSE. Data: ' + JSON.stringify(data));
 
-            if (!response.ok) {
-                let errorText = `HTTP error ${response.status}`;
-                try {
-                    const errorData = await response.text(); // Get raw text for debugging
-                    console.error("Raw error response from get_rent_status:", errorData);
-                    errorText += ` - ${errorData.substring(0, 100)}`; // Show first 100 chars
-                } catch (e) { /* ignore text parsing error */ }
-                throw new Error(errorText);
-            }
-
-            const data = await response.json(); // Now try to parse as JSON
+            rentToggleButton.disabled = false; // Moved here, after all response processing
 
             if (data.is_paid) {
                 rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${data.details.amount} on ${data.details.paid_date})`;
@@ -468,6 +457,7 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
                 rentToggleButton.dataset.rentStatus = 'unpaid';
             }
 
+            // Ensure onclick is reassigned here after button text might change
             rentToggleButton.onclick = async () => {
                 rentToggleButton.disabled = true;
                 const currentStatus = rentToggleButton.dataset.rentStatus;
@@ -524,22 +514,17 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
                     if (modalFeedbackEl.className !== 'error') modalFeedbackEl.textContent = '';
                 }, 2000);
             };
+            // End of successful data processing and onclick setup
 
         } catch (error) {
-            alert(`[Debug] In catch. Error message: ${error.message}`); // DEBUG: Alert the raw error message
-
+            alert(`[Debug] In CATCH block. Error message: ${error.message}`);
             if (modalFeedbackEl) {
                 modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message;
                 modalFeedbackEl.className = 'error';
-            } else {
-                alert('[Debug] modalFeedbackEl is NULL in catch block!');
             }
-
-            console.error('Error in setupRentButton:', error); // This will still go to browser console if available
-
             if(rentToggleButton) {
                 rentToggleButton.textContent = 'Error loading status';
-                rentToggleButton.disabled = false;
+                rentToggleButton.disabled = false; // Ensure it's enabled if an error occurs
             }
         }
     }
