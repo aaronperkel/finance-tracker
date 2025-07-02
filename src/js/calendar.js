@@ -523,12 +523,20 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
             };
 
         } catch (error) {
-            console.error('Error in setupRentButton:', error);
-            modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message; // error.message will now include more details if !response.ok
-            modalFeedbackEl.className = 'error';
-            if(rentToggleButton) { // Ensure button exists before trying to modify it
+            alert(`[Debug] In catch. Error message: ${error.message}`); // DEBUG: Alert the raw error message
+
+            if (modalFeedbackEl) {
+                modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message;
+                modalFeedbackEl.className = 'error';
+            } else {
+                alert('[Debug] modalFeedbackEl is NULL in catch block!');
+            }
+
+            console.error('Error in setupRentButton:', error); // This will still go to browser console if available
+
+            if(rentToggleButton) {
                 rentToggleButton.textContent = 'Error loading status';
-                rentToggleButton.disabled = false; // Ensure it's re-enabled on error too
+                rentToggleButton.disabled = false;
             }
         }
     }
