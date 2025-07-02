@@ -45,21 +45,27 @@ function applyHourStyles(dayCell, hoursSpan, hoursValue) {
     if (hoursValue === null || typeof hoursValue === 'undefined') {
         hoursSpan.textContent = '';
         hoursSpan.classList.add('placeholder-dash');
-    } else if (hoursValue > 7.5) {
-        dayCell.classList.add('gold-hours');
+    } else if (hoursValue === 0) { // Explicitly 0 hours, show as red
+        dayCell.classList.add('red-hours');
         hoursSpan.textContent = hoursValue.toFixed(2);
-    } else if (hoursValue > 0 && hoursValue <= 7.5) {
-        let percentage = hoursValue / 7.5;
+    } else if (hoursValue > 0) { // Covers all cases > 0
+        // For hours >= 7.5, percentage will be 1.0 (or more, capped by Math.min), resulting in full green (hue 120)
+        // For hours < 7.5, it will be a gradient from red-ish (low positive values) to green.
+        let percentage = Math.min(hoursValue / 7.5, 1.0); // Cap at 1.0 for 7.5+ hours
+        // Adjust hue slightly so that very small positive hours are not pure red (hue 0)
+        // Let's say hue starts from 10 (orangey-red) for >0 up to 120 (green)
+        // If percentage is 0 (e.g. hoursValue is extremely small like 0.01), hue should not be 0 if 0 is red.
+        // Let's map percentage (0 to 1) to hue (e.g., 0 to 120 for red to green)
+        // A very small positive hour (e.g. 0.1) will have a small percentage.
+        // If hue = 0 is red, and hue = 120 is green:
         let hue = percentage * 120;
+
         dayCell.style.backgroundColor = `hsl(${hue}, 70%, 88%)`;
         dayCell.style.color = `hsl(${hue}, 90%, 25%)`;
         hoursSpan.style.color = `hsl(${hue}, 90%, 25%)`;
         hoursSpan.textContent = hoursValue.toFixed(2);
         hoursSpan.style.fontWeight = 'bold';
-    } else if (hoursValue === 0) {
-        dayCell.classList.add('red-hours');
-        hoursSpan.textContent = hoursValue.toFixed(2);
-    } else {
+    } else { // Fallback for any other case (e.g. negative, though validation should prevent)
         hoursSpan.textContent = '';
         hoursSpan.classList.add('placeholder-dash');
     }
