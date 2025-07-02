@@ -392,6 +392,8 @@ function getTodaysDateString() {
 }
 
 async function setupRentButton(modalContentElement, clickedDateStr) {
+    alert(`[Debug] setupRentButton called for: ${clickedDateStr}`); // FORCED DEBUG
+
     const dateObj = new Date(clickedDateStr + 'T00:00:00'); // Ensure local time interpretation
     const dayOfMonth = dateObj.getDate(); // Use getDate() which is 1-31
 
