@@ -378,7 +378,6 @@ function openEditModal(dateStr, currentHoursText, isDefault) {
 function getRentMonthString(dateStr) {
     // dateStr is expected to be YYYY-MM-DD
     const dateParts = dateStr.split('-');
-    // Ensure month is two digits for the first day of the month string
     return `${dateParts[0]}-${dateParts[1]}-01`;
 }
 
@@ -392,15 +391,12 @@ function getTodaysDateString() {
 }
 
 async function setupRentButton(modalContentElement, clickedDateStr) {
-    alert(`[Debug] setupRentButton called for: ${clickedDateStr}`); // FORCED DEBUG
-
-    const dateObj = new Date(clickedDateStr + 'T00:00:00'); // Ensure local time interpretation
-    const dayOfMonth = dateObj.getDate(); // Use getDate() which is 1-31
+    const dateObj = new Date(clickedDateStr + 'T00:00:00');
+    const dayOfMonth = dateObj.getDate();
 
     const rentButtonContainerId = 'rent-button-container';
     let rentButtonContainer = modalContentElement.querySelector(`#${rentButtonContainerId}`);
 
-    // Remove existing container if it exists, to ensure clean state
     if (rentButtonContainer) {
         rentButtonContainer.remove();
     }
@@ -431,22 +427,104 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
         alert('[Debug] After getRentMonthString. rentMonthForAPI: ' + rentMonthForAPI); // <<< THIS IS THE CRITICAL ALERT NOW
 
         try {
-            alert('[Debug] TRY_BLOCK_START');
             rentToggleButton.disabled = true;
-            alert('[Debug] TRY_AFTER_BUTTON_DISABLE');
 
             const fetchUrl = `src/get_rent_status.php?rent_month=${rentMonthForAPI}`;
-            alert('[Debug] TRY_BEFORE_FETCH. URL: ' + fetchUrl);
             const response = await fetch(fetchUrl);
-            alert('[Debug] TRY_AFTER_FETCH. Status: ' + response.status + ', OK: ' + response.ok);
+
+            rentToggleButton.disabled = false;
+
+            if (!response.ok) {
+                let errorText = `HTTP error ${response.status}`;
+                try {
+                    // Try to get more specific error from response body if possible
+                    const errorDataText = await response.text();
+                    console.error("Raw error response from get_rent_status (not ok):", errorDataText); // For browser console
+                    // Attempt to parse as JSON if it's an error structure we expect
+                    try {
+                        const errJson = JSON.parse(errorDataText);
+                        if (errJson && errJson.error) {
+                            errorText += ` - ${errJson.error}`;
+                        } else {
+                            errorText += ` - ${errorDataText.substring(0, 100)}`;
+                        }
+                    } catch (e_json) { // Not JSON
+                        errorText += ` - ${errorDataText.substring(0, 100)}`;
+                    }
+                } catch (e_text) { /* ignore text parsing error, errorText remains as is */ }
+                throw new Error(errorText);
+            }
 
             const responseText = await response.text();
-            alert('[Debug] TRY_AFTER_RESPONSE_TEXT. Text: ' + responseText.substring(0, 200));
+            try {
+                const data = JSON.parse(responseText);
 
-            const data = JSON.parse(responseText);
-            alert('[Debug] TRY_AFTER_JSON_PARSE. Data: ' + JSON.stringify(data));
+                // Original logic based on 'data' would follow here...
+                if (data.is_paid) {
+                    rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${data.details.amount} on ${data.details.paid_date})`;
+                    rentToggleButton.dataset.rentStatus = 'paid';
+                    rentToggleButton.dataset.rentAmount = data.details.amount;
+                } else {
+                    rentToggleButton.textContent = 'Mark Current Month Rent Paid';
+                    rentToggleButton.dataset.rentStatus = 'unpaid';
+                }
+                // Ensure onclick is reassigned here after button text might change
+                rentToggleButton.onclick = async () => {
+                    // ... (onclick handler - this part remains the same as previously defined)
+                    rentToggleButton.disabled = true;
+                    const currentStatus = rentToggleButton.dataset.rentStatus;
+                    const monthToActOn = getRentMonthString(currentModalDate);
 
-            rentToggleButton.disabled = false; // Moved here, after all response processing
+                    if (currentStatus === 'unpaid') {
+                        const rentAmountToPay = parseFloat(document.getElementById('rent-amount-input-field')?.value || prompt("Enter rent amount:", "1100.99") || "1100.99");
+                        const paidDate = getTodaysDateString();
+                        try {
+                            const markPaidResponse = await fetch('src/mark_rent_paid.php', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({rent_month: monthToActOn, paid_date: paidDate, amount: rentAmountToPay})
+                            });
+                            if (!markPaidResponse.ok) throw new Error(`HTTP error ${markPaidResponse.status}`);
+                            const markPaidData = await markPaidResponse.json();
+                            if (markPaidData.success) {
+                                rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${rentAmountToPay.toFixed(2)} on ${paidDate})`;
+                                rentToggleButton.dataset.rentStatus = 'paid';
+                                rentToggleButton.dataset.rentAmount = rentAmountToPay;
+                                if (window.refreshFinancialSummary) window.refreshFinancialSummary();
+                            } else { throw new Error(markPaidData.error || 'Unknown error'); }
+                        } catch (err) {
+                            if(modalFeedbackEl) modalFeedbackEl.textContent = 'Error marking rent paid: ' + err.message; else alert('Error marking rent paid: ' + err.message);
+                            if(modalFeedbackEl) modalFeedbackEl.className = 'error';
+                        }
+                    } else { // currentStatus === 'paid'
+                        try {
+                            const deleteResponse = await fetch('src/delete_rent_payment.php', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({rent_month: monthToActOn})
+                            });
+                            if (!deleteResponse.ok) throw new Error(`HTTP error ${deleteResponse.status}`);
+                            const deleteData = await deleteResponse.json();
+                            if (deleteData.success) {
+                                rentToggleButton.textContent = 'Mark Current Month Rent Paid';
+                                rentToggleButton.dataset.rentStatus = 'unpaid';
+                                if (window.refreshFinancialSummary) window.refreshFinancialSummary();
+                            } else { throw new Error(deleteData.error || 'Unknown error'); }
+                        } catch (err) {
+                            if(modalFeedbackEl) modalFeedbackEl.textContent = 'Error marking rent unpaid: ' + err.message; else alert('Error marking rent unpaid: ' + err.message);
+                            if(modalFeedbackEl) modalFeedbackEl.className = 'error';
+                        }
+                    }
+                    rentToggleButton.disabled = false;
+                    setTimeout(() => {
+                        if (modalFeedbackEl && modalFeedbackEl.className !== 'error') modalFeedbackEl.textContent = '';
+                    }, 2000);
+                }; // End of onclick handler
+            } catch (e_parse) {
+                // This catch is specifically for JSON.parse failure
+                console.error("JSON Parse Error in get_rent_status response:", e_parse, "Raw text:", responseText);
+                throw new Error(`JSON Parse error: ${e_parse.message}. Response was: ${responseText.substring(0,200)}`);
+            }
 
             if (data.is_paid) {
                 rentToggleButton.textContent = `Mark Rent Unpaid (Paid ${data.details.amount} on ${data.details.paid_date})`;
@@ -517,14 +595,20 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
             // End of successful data processing and onclick setup
 
         } catch (error) {
-            alert(`[Debug] In CATCH block. Error message: ${error.message}`);
+            // End of successful data processing and onclick setup
+
+        } catch (error) {
+            // This is the main catch for the try block that includes fetch and JSON parsing
+            console.error('Error in setupRentButton (outer catch):', error); // Log detailed error to console
             if (modalFeedbackEl) {
                 modalFeedbackEl.textContent = 'Could not load rent status: ' + error.message;
                 modalFeedbackEl.className = 'error';
+            } else {
+                alert('Could not load rent status: ' + error.message); // Fallback if no feedbackEl
             }
             if(rentToggleButton) {
                 rentToggleButton.textContent = 'Error loading status';
-                rentToggleButton.disabled = false; // Ensure it's enabled if an error occurs
+                rentToggleButton.disabled = false;
             }
         }
     }
