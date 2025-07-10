@@ -58,328 +58,132 @@ try {
     }
 
     // ... (Full existing pay calculation logic - populates $response["estimated_upcoming_pay"], $response["is_pay_day"], $response["next_pay_date"], and $true_next_payday_obj - unchanged) ...
-    $true_next_payday_obj = null; // Will be populated by pay calc logic
-    // --- Start: Pay calculation logic ---
-    $response["gross_estimated_pay"] = 0.00;
-    $response["estimated_federal_tax"] = 0.00;
-    $response["estimated_state_tax"] = 0.00;
-    $response["estimated_upcoming_pay"] = 0.00;
-    $response["is_pay_day"] = false;
+    // --- Start: NEW Pay calculation logic ---
+    $response["gross_estimated_pay"] = 0.00; $response["estimated_federal_tax"] = 0.00;
+    $response["estimated_state_tax"] = 0.00; $response["estimated_upcoming_pay"] = 0.00;
+    $response["is_pay_day"] = false; $true_next_payday_obj = null;
 
-    // Helper function to adjust a date to Friday if it's a weekend
-    function adjustToGivenDayOfWeek(DateTime $date, int $targetDayOfWeek = 5): DateTime { // 5 for Friday
-        $currentDayOfWeek = (int)$date->format('N');
-        if ($targetDayOfWeek >= 1 && $targetDayOfWeek <=7) {
-            if ($currentDayOfWeek > $targetDayOfWeek) { // e.g. Sat (6) > Fri (5) or Sun (7) > Fri (5)
-                 $date->modify('-' . ($currentDayOfWeek - $targetDayOfWeek) . ' days');
-            } elseif ($currentDayOfWeek < $targetDayOfWeek) { // e.g. Mon (1) < Fri (5)
-                 // This case might not be what we want for "adjustToFriday" from weekend,
-                 // but could be useful if we wanted to find "next occurring Friday".
-                 // For now, this function is mostly for "previous or current Friday if weekend".
-                 // The primary use is: if Sat, go to Fri. If Sun, go to Fri.
-                 // Let's stick to the simpler logic for weekend adjustment to previous Friday.
-            }
-        }
-        // Simplified for weekend adjustment to PRECEDING Friday
-        $dayOfWeek = (int)$date->format('N'); // 1 (Mon) to 7 (Sun)
-        if ($dayOfWeek === 6) { // Saturday
-            $date->modify('-1 day');
-        } elseif ($dayOfWeek === 7) { // Sunday
-            $date->modify('-2 days');
-        }
+    function adjustWeekendToFriday(DateTime $date): DateTime {
+        $dayOfWeek = (int)$date->format('N');
+        if ($dayOfWeek === 6) { $date->modify('-1 day'); }
+        elseif ($dayOfWeek === 7) { $date->modify('-2 days'); }
         return $date;
     }
 
-    // Fetch all relevant app settings
-    $settings_query_keys = [
-        'pay_rate', 'federal_tax_rate', 'state_tax_rate',
-        'pay_schedule_type', 'pay_schedule_detail1', 'pay_schedule_detail2'
-    ];
-    $placeholders = rtrim(str_repeat('?,', count($settings_query_keys)), ',');
+    $settings_keys = ['pay_rate', 'federal_tax_rate', 'state_tax_rate', 'pay_schedule_type', 'pay_schedule_detail1', 'pay_schedule_detail2'];
+    $placeholders = rtrim(str_repeat('?,', count($settings_keys)), ',');
     $stmt_settings = $pdo->prepare("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ($placeholders)");
-    $stmt_settings->execute($settings_query_keys);
-    $app_settings = [];
-    while ($row = $stmt_settings->fetch(PDO::FETCH_ASSOC)) {
-        $app_settings[$row['setting_key']] = $row['setting_value'];
-    }
+    $stmt_settings->execute($settings_keys);
+    $app_settings = []; while ($row = $stmt_settings->fetch(PDO::FETCH_ASSOC)) { $app_settings[$row['setting_key']] = $row['setting_value']; }
 
     $pay_rate = isset($app_settings['pay_rate']) ? floatval($app_settings['pay_rate']) : 0;
-    $federal_tax_rate_value = isset($app_settings['federal_tax_rate']) ? floatval($app_settings['federal_tax_rate']) : 0;
-    $state_tax_rate_value = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
 
-    $pay_schedule_type = $app_settings['pay_schedule_type'] ?? 'semi-monthly'; // Default
-    $ps_detail1_setting = $app_settings['pay_schedule_detail1'] ?? null;
-    $ps_detail2_setting = $app_settings['pay_schedule_detail2'] ?? null;
+    if ($pay_rate > 0) {
+        $current_date_time = (new DateTimeImmutable())->setTime(0,0,0);
+        $pay_schedule_type = $app_settings['pay_schedule_type'] ?? 'semi-monthly';
+        $ps_detail1 = $app_settings['pay_schedule_detail1'] ?? null;
+        $ps_detail2 = $app_settings['pay_schedule_detail2'] ?? null;
+        $potential_paydates = [];
 
-    $current_date_time = new DateTimeImmutable(); // Use Immutable for safety
-    $current_date_time = $current_date_time->setTime(0,0,0);
-
-    $true_next_payday_obj = null;
-    $all_potential_paydays_this_and_next_month = []; // Store DateTimeImmutable objects
-
-    // --- Determine Next Payday ---
-    if ($pay_schedule_type === 'bi-weekly') {
-        if (empty($ps_detail1_setting) || !($referenceFriday = DateTimeImmutable::createFromFormat('Y-m-d', $ps_detail1_setting))) {
-            // Handle error: missing or invalid reference Friday for bi-weekly
-            throw new Exception("Bi-weekly schedule is set but reference Friday (pay_schedule_detail1) is missing or invalid.");
-        }
-        $referenceFriday = $referenceFriday->setTime(0,0,0);
-        // Adjust reference to be an actual Friday if it's not (e.g. user error in settings)
-        while((int)$referenceFriday->format('N') !== 5) {
-            $referenceFriday = $referenceFriday->modify('+1 day');
-        }
-
-        $temp_payday = clone $referenceFriday;
-        // Go back to find a cycle start before or equal to current date to ensure we find the *next* one correctly
-        while ($temp_payday > $current_date_time) {
-            $temp_payday = $temp_payday->modify('-14 days');
-        }
-        // Now find the first payday on or after current_date_time
-        while ($temp_payday < $current_date_time) {
-            $temp_payday = $temp_payday->modify('+14 days');
-        }
-        $true_next_payday_obj = clone $temp_payday; // This is the upcoming one
-        // For bi-weekly, also add the one after that for safety in period calculation if needed
-        $all_potential_paydays_this_and_next_month[] = $true_next_payday_obj;
-        $all_potential_paydays_this_and_next_month[] = $true_next_payday_obj->modify('+14 days');
-
-
-    } elseif ($pay_schedule_type === 'semi-monthly') {
-        $day1 = ($ps_detail1_setting !== null && $ps_detail1_setting !== '') ? (int)$ps_detail1_setting : 15;
-        $day2_val = ($ps_detail2_setting !== null && $ps_detail2_setting !== '') ? (int)$ps_detail2_setting : 0;
-
-        $current_month_paydays = [];
-        $next_month_paydays = [];
-
-        $current_month_dt = new DateTime($current_date_time->format('Y-m-01'));
-        $next_month_dt = (new DateTime($current_date_time->format('Y-m-01')))->modify('+1 month');
-
-        // Paydays for current month
-        $pd1_curr = adjustToGivenDayOfWeek((clone $current_month_dt)->setDate((int)$current_month_dt->format('Y'), (int)$current_month_dt->format('n'), $day1));
-        if ($pd1_curr >= $current_date_time) $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable($pd1_curr);
-
-        $pd2_curr_base = clone $current_month_dt;
-        if ($day2_val === 0) $pd2_curr_base->modify('last day of this month');
-        else $pd2_curr_base->setDate((int)$current_month_dt->format('Y'), (int)$current_month_dt->format('n'), $day2_val);
-        $pd2_curr = adjustToGivenDayOfWeek($pd2_curr_base);
-        if ($pd2_curr >= $current_date_time && $pd2_curr->format('Y-m-d') !== $pd1_curr->format('Y-m-d')) {
-             $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable($pd2_curr);
-        }
-
-        // Paydays for next month (to ensure we always have a future one)
-        $pd1_next = adjustToGivenDayOfWeek((clone $next_month_dt)->setDate((int)$next_month_dt->format('Y'), (int)$next_month_dt->format('n'), $day1));
-        $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable($pd1_next);
-
-        $pd2_next_base = clone $next_month_dt;
-        if ($day2_val === 0) $pd2_next_base->modify('last day of this month');
-        else $pd2_next_base->setDate((int)$next_month_dt->format('Y'), (int)$next_month_dt->format('n'), $day2_val);
-        $pd2_next = adjustToGivenDayOfWeek($pd2_next_base);
-         if ($pd2_next->format('Y-m-d') !== $pd1_next->format('Y-m-d')) {
-            $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable($pd2_next);
-        }
-
-    } elseif ($pay_schedule_type === 'monthly') {
-        $day_val = ($ps_detail1_setting !== null && $ps_detail1_setting !== '') ? (int)$ps_detail1_setting : 0;
-
-        $current_month_dt = new DateTime($current_date_time->format('Y-m-01'));
-        $next_month_dt = (new DateTime($current_date_time->format('Y-m-01')))->modify('+1 month');
-        $month_after_next_dt = (new DateTime($current_date_time->format('Y-m-01')))->modify('+2 months');
-
-        $pd_curr_base = clone $current_month_dt;
-        if ($day_val === 0) $pd_curr_base->modify('last day of this month');
-        else $pd_curr_base->setDate((int)$current_month_dt->format('Y'), (int)$current_month_dt->format('n'), $day_val);
-        $pd_curr = adjustToGivenDayOfWeek($pd_curr_base);
-        if ($pd_curr >= $current_date_time) $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable($pd_curr);
-
-        $pd_next_base = clone $next_month_dt;
-        if ($day_val === 0) $pd_next_base->modify('last day of this month');
-        else $pd_next_base->setDate((int)$next_month_dt->format('Y'), (int)$next_month_dt->format('n'), $day_val);
-        $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable(adjustToGivenDayOfWeek($pd_next_base));
-
-        $pd_after_next_base = clone $month_after_next_dt; // Ensure we have one far enough out
-        if ($day_val === 0) $pd_after_next_base->modify('last day of this month');
-        else $pd_after_next_base->setDate((int)$month_after_next_dt->format('Y'), (int)$month_after_next_dt->format('n'), $day_val);
-        $all_potential_paydays_this_and_next_month[] = DateTimeImmutable::createFromMutable(adjustToGivenDayOfWeek($pd_after_next_base));
-    }
-
-    // Sort all potential paydays and find the earliest one on or after today
-    if (!empty($all_potential_paydays_this_and_next_month)) {
-        // Remove duplicates that might occur due to adjustments
-        $unique_paydays_str = [];
-        foreach ($all_potential_paydays_this_and_next_month as $pd) {
-            $unique_paydays_str[$pd->format('Y-m-d')] = $pd;
-        }
-        $all_potential_paydays_this_and_next_month = array_values($unique_paydays_str);
-
-        usort($all_potential_paydays_this_and_next_month, function(DateTimeImmutable $a, DateTimeImmutable $b) {
-            return $a <=> $b;
-        });
-
-        foreach ($all_potential_paydays_this_and_next_month as $pd_obj) {
-            if ($pd_obj >= $current_date_time) {
-                $true_next_payday_obj = $pd_obj;
-                break;
-            }
-        }
-    }
-
-    if (!$true_next_payday_obj) {
-        // This should not happen if logic is correct and settings are present
-        throw new Exception("Could not determine the next payday. Check pay schedule settings and logic.");
-    }
-    $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
-
-    // --- Determine Pay Period based on $true_next_payday_obj and user's definition ---
-    // User: "imagine two weeks go by, then i get paid the next friday for those two weeks,
-    // and the week leading up to pay day, goes into the next paycheck."
-    // Payday (Friday, P)
-    // Week of Pay (Mon P-4 to Fri P) -> This work goes to *next* paycheck.
-    // Paid Period (Mon P-18 to Fri P-7) -> This is the 2 weeks of work paid on P.
-
-    if ($pay_schedule_type === 'bi-weekly') {
-        // Payday (P = $true_next_payday_obj, which is a Friday)
-        // Paid Period: Monday (P-18 days) to Friday (P-7 days)
-        $pay_period_start_date_obj = $true_next_payday_obj->modify('-18 days');
-        $pay_period_end_date_obj = $true_next_payday_obj->modify('-7 days');
-    } else { // semi-monthly or monthly - ADAPT THIS PART CAREFULLY
-        // The old logic was:
-        // $pay_period_end_date_obj = (clone $true_next_payday_obj)->modify('-5 days')->setTime(0, 0, 0);
-        // $pay_period_start_date_obj = (clone $pay_period_end_date_obj)->modify('-13 days')->setTime(0, 0, 0);
-        // This assumed a pay period ending 5 days before payday and lasting 14 days.
-        // This needs to be re-evaluated for semi-monthly and monthly.
-        // For now, let's make a simpler assumption for non-bi-weekly:
-        // Pay period ends the day before the payday.
-        // Pay period starts based on the *previous* payday.
-
-        // To implement this correctly, we need the payday *before* $true_next_payday_obj
-        $previous_payday_obj = null;
-        $paydays_for_period_calc = []; // Re-fetch or re-calculate paydays for a broader range if needed
-
-        // Simplified placeholder for semi-monthly/monthly pay period (NEEDS REVIEW AND USER FEEDBACK)
-        // This will likely not match the user's expectation for bi-weekly if schedule type changes.
-        // For now, let's assume pay period is from previous payday (or start of month) to day before current payday
-
-        // Find payday immediately preceding $true_next_payday_obj to define the start of the pay period.
-        // For this, we need a list of paydays that definitely includes dates before $true_next_payday_obj.
-        // The $all_potential_paydays_this_and_next_month might only contain future dates.
-        // Let's generate a broader list for period determination if needed.
-
-        $paydays_for_period_determination = [];
-        $num_months_to_check_around = 2; // Check current month, N previous, N next for robustness
-
-        $temp_current_month_start = new DateTimeImmutable($current_date_time->format('Y-m-01'));
-
-        for ($i = -$num_months_to_check_around; $i <= $num_months_to_check_around; $i++) {
-            $iter_month_start = $temp_current_month_start->modify("$i month");
-            $iter_year = (int)$iter_month_start->format('Y');
-            $iter_month = (int)$iter_month_start->format('n');
-
-            if ($pay_schedule_type === 'semi-monthly') {
-                $day1 = ($ps_detail1_setting !== null && $ps_detail1_setting !== '') ? (int)$ps_detail1_setting : 15;
-                $day2_val = ($ps_detail2_setting !== null && $ps_detail2_setting !== '') ? (int)$ps_detail2_setting : 0;
-
-                $pd1_mut = (new DateTime())->setDate($iter_year, $iter_month, $day1)->setTime(0,0,0);
-                $paydays_for_period_determination[] = DateTimeImmutable::createFromMutable(adjustToGivenDayOfWeek($pd1_mut));
-
-                $pd2_mut_base = (new DateTime())->setDate($iter_year, $iter_month, 1)->setTime(0,0,0);
-                if ($day2_val === 0) $pd2_mut_base->modify('last day of this month');
-                else $pd2_mut_base->setDate($iter_year, $iter_month, $day2_val);
-                $paydays_for_period_determination[] = DateTimeImmutable::createFromMutable(adjustToGivenDayOfWeek($pd2_mut_base));
-
-            } elseif ($pay_schedule_type === 'monthly') {
-                $day_val = ($ps_detail1_setting !== null && $ps_detail1_setting !== '') ? (int)$ps_detail1_setting : 0;
-                $pd_mut_base = (new DateTime())->setDate($iter_year, $iter_month, 1)->setTime(0,0,0);
-                if ($day_val === 0) $pd_mut_base->modify('last day of this month');
-                else $pd_mut_base->setDate($iter_year, $iter_month, $day_val);
-                $paydays_for_period_determination[] = DateTimeImmutable::createFromMutable(adjustToGivenDayOfWeek($pd_mut_base));
+        if ($pay_schedule_type === 'bi-weekly') {
+            if (empty($ps_detail1) || !($refFriday = DateTimeImmutable::createFromFormat('Y-m-d', $ps_detail1))) { throw new Exception("Bi-weekly: Invalid reference Friday."); }
+            $refFriday = $refFriday->setTime(0,0,0);
+            while((int)$refFriday->format('N') !== 5) { $refFriday = $refFriday->modify('+1 day'); }
+            $temp_pd = clone $refFriday;
+            while ($temp_pd > $current_date_time) { $temp_pd = $temp_pd->modify('-14 days'); }
+            while ($temp_pd < $current_date_time) { $temp_pd = $temp_pd->modify('+14 days'); }
+            $true_next_payday_obj = clone $temp_pd;
+            $potential_paydates[] = $true_next_payday_obj; $potential_paydates[] = $true_next_payday_obj->modify('+14 days'); $potential_paydates[] = $true_next_payday_obj->modify('-14 days');
+        } else { // semi-monthly or monthly
+            $months_offsets = [-2, -1, 0, 1, 2]; // Scan current, previous 2, next 2 months for robustness
+            foreach ($months_offsets as $offset) {
+                $scan_date = $current_date_time->modify("first day of this month $offset month");
+                $y = (int)$scan_date->format('Y'); $m = (int)$scan_date->format('n');
+                if ($pay_schedule_type === 'semi-monthly') {
+                    $d1 = ($ps_detail1 !== null && $ps_detail1 !== '') ? (int)$ps_detail1 : 15;
+                    $d2 = ($ps_detail2 !== null && $ps_detail2 !== '') ? (int)$ps_detail2 : 0; // 0 for last day
+                    $potential_paydates[] = DateTimeImmutable::createFromMutable(adjustWeekendToFriday((new DateTime())->setDate($y, $m, $d1)->setTime(0,0,0)));
+                    $pd2_base = (new DateTime())->setDate($y, $m, 1)->setTime(0,0,0); // Start with 1st to correctly get 'last day of this month'
+                    if ($d2 === 0) $pd2_base->modify('last day of this month'); else $pd2_base->setDate($y, $m, $d2);
+                    $potential_paydates[] = DateTimeImmutable::createFromMutable(adjustWeekendToFriday($pd2_base));
+                } elseif ($pay_schedule_type === 'monthly') {
+                    $d = ($ps_detail1 !== null && $ps_detail1 !== '') ? (int)$ps_detail1 : 0; // 0 for last day
+                    $pd_base = (new DateTime())->setDate($y, $m, 1)->setTime(0,0,0); // Start with 1st
+                    if ($d === 0) $pd_base->modify('last day of this month'); else $pd_base->setDate($y, $m, $d);
+                    $potential_paydates[] = DateTimeImmutable::createFromMutable(adjustWeekendToFriday($pd_base));
+                }
             }
         }
 
-        // Consolidate and sort all paydays found for period determination
-        $unique_paydays_str_period = [];
-        foreach ($paydays_for_period_determination as $pd) {
-            $unique_paydays_str_period[$pd->format('Y-m-d')] = $pd;
-        }
-        $paydays_for_period_determination = array_values($unique_paydays_str_period);
-        usort($paydays_for_period_determination, function(DateTimeImmutable $a, DateTimeImmutable $b) {
-            return $a <=> $b;
-        });
+        // Deduplicate and sort all collected paydates
+        $unique_pds = []; foreach ($potential_paydates as $pd) { $unique_pds[$pd->format('Y-m-d')] = $pd; }
+        $potential_paydates = array_values($unique_pds); usort($potential_paydates, fn($a, $b) => $a <=> $b);
 
-        $previous_payday_obj_for_period_start = null;
-        // Find the payday in this list that is immediately before $true_next_payday_obj
-        for ($j = count($paydays_for_period_determination) - 1; $j >= 0; $j--) {
-            if ($paydays_for_period_determination[$j] < $true_next_payday_obj) {
-                $previous_payday_obj_for_period_start = $paydays_for_period_determination[$j];
-                break;
+        // For semi-monthly/monthly, find the true next payday from the generated list
+        if ($pay_schedule_type !== 'bi-weekly') {
+             foreach ($potential_paydates as $pd) { if ($pd >= $current_date_time) { $true_next_payday_obj = $pd; break; } }
+        }
+        // For bi-weekly, $true_next_payday_obj is already set directly and is the first relevant one.
+
+        if (!$true_next_payday_obj) { throw new Exception("Could not determine next payday. Check pay schedule settings."); }
+        $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
+
+        // Determine Pay Period
+        if ($pay_schedule_type === 'bi-weekly') {
+            // Paid Period: Monday (P-18 days) to Friday (P-7 days)
+            $pay_period_start_date_obj = $true_next_payday_obj->modify('-18 days');
+            $pay_period_end_date_obj = $true_next_payday_obj->modify('-7 days');
+        } else { // Semi-monthly or Monthly
+            $previous_payday_for_period = null;
+            // Iterate backwards through the sorted, unique list of all paydays found
+            foreach (array_reverse($potential_paydates) as $pd_candidate) {
+                if ($pd_candidate < $true_next_payday_obj) {
+                    $previous_payday_for_period = $pd_candidate;
+                    break;
+                }
             }
-        }
-
-        if ($previous_payday_obj_for_period_start) {
-            // Pay period is from the day *after* the previous payday up to and including the day *before* the current payday.
-            // Or, more commonly, from previous payday (inclusive) to day before current payday (inclusive)
-            $pay_period_start_date_obj = $previous_payday_obj_for_period_start;
-            $pay_period_end_date_obj = $true_next_payday_obj->modify('-1 day');
-        } else {
-            // Could not find a previous payday (e.g., very first pay period in the system for this schedule)
-            // Default: start of the month of the $true_next_payday_obj up to day before $true_next_payday_obj
-            $pay_period_start_date_obj = $true_next_payday_obj->modify('first day of this month');
+            $pay_period_start_date_obj = $previous_payday_for_period ? $previous_payday_for_period : $true_next_payday_obj->modify('first day of this month');
             $pay_period_end_date_obj = $true_next_payday_obj->modify('-1 day');
         }
-    }
+        $response["debug_pay_period_start"] = $pay_period_start_date_obj->format('Y-m-d');
+        $response["debug_pay_period_end"] = $pay_period_end_date_obj->format('Y-m-d');
 
-    $response["debug_pay_period_start"] = $pay_period_start_date_obj->format('Y-m-d');
-    $response["debug_pay_period_end"] = $pay_period_end_date_obj->format('Y-m-d');
+        // Check if current date is a payday
+        if ($current_date_time == $true_next_payday_obj) { // Compare DateTimeImmutable objects
+            $response["is_pay_day"] = true;
+        }
 
-    $jobStartDate = new DateTimeImmutable('2025-05-20'); // Assuming this is fixed, make immutable
-    $jobStartDate = $jobStartDate->setTime(0,0,0);
-
-    if ($current_date_time->format('Y-m-d') === $true_next_payday_obj->format('Y-m-d')) {
-        $response["is_pay_day"] = true;
-    }
-
-    if ($response["is_pay_day"]) {
-        // On payday, the "estimated_upcoming_pay" is for the *next* period, which we haven't calculated yet.
-        // Or, it means the pay for the period just ended has been received.
-        // For simplicity, let's assume on payday, the "upcoming" estimate is 0, as it's just been paid / is being paid.
-        // The "future_net_worth" will then just be current_net_worth.
-        // If we wanted to show the *next* paycheck amount on payday, the logic would need to look further ahead.
-        $response["gross_estimated_pay"] = 0.00;
-        $response["estimated_federal_tax"] = 0.00;
-        $response["estimated_state_tax"] = 0.00;
-        $response["estimated_upcoming_pay"] = 0.00;
+        if ($response["is_pay_day"]) {
+            // Gross, federal, state, upcoming pay remain 0.00 as initialized
         } else {
+            $jobStartDate = (new DateTimeImmutable('2025-05-20'))->setTime(0,0,0); // Ensure this is immutable for comparison
             $stmt_logged = $pdo->prepare("SELECT log_date, hours_worked FROM logged_hours WHERE log_date BETWEEN ? AND ?");
             $stmt_logged->execute([$pay_period_start_date_obj->format('Y-m-d'), $pay_period_end_date_obj->format('Y-m-d')]);
-            $logged_hours_for_period_raw = $stmt_logged->fetchAll(PDO::FETCH_ASSOC);
-            $explicitly_logged_hours = [];
-            foreach ($logged_hours_for_period_raw as $row) {
-                $explicitly_logged_hours[$row['log_date']] = (float) $row['hours_worked'];
-            }
-            $total_hours_for_period = 0.0;
-            $loop_date = clone $pay_period_start_date_obj;
-            while ($loop_date <= $pay_period_end_date_obj) {
-                $date_str = $loop_date->format('Y-m-d');
-                $day_of_week = (int) $loop_date->format('N');
-                if ($loop_date >= $jobStartDate && $day_of_week >= 1 && $day_of_week <= 5) {
-                    if (isset($explicitly_logged_hours[$date_str])) {
-                        $total_hours_for_period += $explicitly_logged_hours[$date_str];
-                    } else {
-                        $total_hours_for_period += 7.5;
-                    }
+            $logged_hours_list = $stmt_logged->fetchAll(PDO::FETCH_ASSOC);
+            $hours_map = []; foreach($logged_hours_list as $l) { $hours_map[$l['log_date']] = (float)$l['hours_worked']; }
+
+            $total_hours = 0.0;
+            $loop_date = DateTime::createFromImmutable($pay_period_start_date_obj); // Use mutable for loop
+            $end_loop_check = ($pay_period_end_date_obj instanceof DateTimeImmutable) ? $pay_period_end_date_obj : DateTimeImmutable::createFromMutable($pay_period_end_date_obj);
+
+            while($loop_date <= $end_loop_check) {
+                $ds = $loop_date->format('Y-m-d'); $dow = (int)$loop_date->format('N');
+                if ($loop_date >= $jobStartDate && $dow >= 1 && $dow <= 5) { // Monday to Friday
+                    $total_hours += $hours_map[$ds] ?? 7.5; // Default hours if not logged
                 }
                 $loop_date->modify('+1 day');
             }
-            $gross_estimated_pay = $total_hours_for_period * $pay_rate;
-            $estimated_federal_tax = $gross_estimated_pay * $federal_tax_rate_value;
-            $estimated_state_tax = $gross_estimated_pay * $state_tax_rate_value;
-            $net_estimated_pay = $gross_estimated_pay - $estimated_federal_tax - $estimated_state_tax;
-            $response["gross_estimated_pay"] = round($gross_estimated_pay, 2);
-            $response["estimated_federal_tax"] = round($estimated_federal_tax, 2);
-            $response["estimated_state_tax"] = round($estimated_state_tax, 2);
-            $response["estimated_upcoming_pay"] = round($net_estimated_pay, 2);
+            $response["gross_estimated_pay"] = round($total_hours * $pay_rate, 2);
+            $fed_tax_rate = isset($app_settings['federal_tax_rate']) ? floatval($app_settings['federal_tax_rate']) : 0;
+            $state_tax_rate = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
+            $fed_tax = $response["gross_estimated_pay"] * $fed_tax_rate;
+            $state_tax = $response["gross_estimated_pay"] * $state_tax_rate;
+            $response["estimated_federal_tax"] = round($fed_tax, 2);
+            $response["estimated_state_tax"] = round($state_tax, 2);
+            $response["estimated_upcoming_pay"] = round($response["gross_estimated_pay"] - $fed_tax - $state_tax, 2);
         }
     }
-    // --- End: Pay calculation logic ---
+    // --- End: NEW Pay calculation logic ---
 
     // Calculate future_net_worth (Raw Snapshot Current Net Worth + Upcoming Pay)
     if ($response["is_pay_day"]) {
