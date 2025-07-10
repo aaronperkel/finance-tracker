@@ -1,5 +1,4 @@
 <?php
-<?php
 require_once 'db.php'; // Now used for fetching app_settings
 header('Content-Type: application/json');
 
@@ -129,15 +128,18 @@ try {
     sort($response);
 
     echo json_encode($response);
+    exit;
 
 } catch (PDOException $e) {
     http_response_code(500);
     error_log("Database error in api_get_paydays.php: " . $e->getMessage());
     echo json_encode(['error' => 'Database error occurred while fetching settings.']);
+    exit;
 } catch (Exception $e) {
     http_response_code(500);
     error_log("General error in api_get_paydays.php: " . $e->getMessage());
     echo json_encode(['error' => 'An unexpected error occurred: ' . $e->getMessage()]);
+    exit;
 }
 
 ?>
