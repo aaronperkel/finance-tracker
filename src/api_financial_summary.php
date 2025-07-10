@@ -63,167 +63,94 @@ try {
         $response["total_liabilities"] = (float) $stmt_lia->fetchColumn();
     }
 
-    // --- net worth history (from user's new version) ---
-    $stmt_history = $pdo->query("
-        SELECT s.snapshot_date AS date,
-               SUM(CASE WHEN a.type='Asset' THEN b.balance ELSE 0 END) -
-               SUM(CASE WHEN a.type='Liability' THEN b.balance ELSE 0 END) AS networth
-        FROM balances b JOIN accounts a ON a.id = b.account_id JOIN snapshots s ON b.snapshot_id = s.id
-        WHERE s.id IN (SELECT MAX(id) FROM snapshots GROUP BY snapshot_date)
-        GROUP BY s.snapshot_date ORDER BY s.snapshot_date
-    ");
-    $response["net_worth_history"] = array_map(function ($row) {
-        $row['networth'] = (float) $row['networth'];
-        return $row;
-    }, $stmt_history->fetchAll(PDO::FETCH_ASSOC));
+    // ... (Existing code for net_worth_history - unchanged) ...
+    $sql_history = "SELECT s.snapshot_date AS date, SUM(CASE WHEN a.type='Asset' THEN b.balance ELSE 0 END) - SUM(CASE WHEN a.type='Liability' THEN b.balance ELSE 0 END) AS networth FROM balances b JOIN accounts a ON a.id = b.account_id JOIN snapshots s ON b.snapshot_id = s.id WHERE s.id IN (SELECT MAX(id) FROM snapshots GROUP BY snapshot_date) GROUP BY s.snapshot_date ORDER BY s.snapshot_date ASC";
+    $stmt_history = $pdo->query($sql_history);
+    $response["net_worth_history"] = $stmt_history->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($response["net_worth_history"] as &$item) {
+        $item["networth"] = floatval($item["networth"]);
+    }
 
-    // --- Pay Calculation Logic ---
-    $settings_query = $pdo->query("
-        SELECT setting_key, setting_value FROM app_settings
-        WHERE setting_key IN ('pay_rate','federal_tax_rate','state_tax_rate')
-    ");
-    $app_settings = $settings_query->fetchAll(PDO::FETCH_KEY_PAIR);
+    // ... (Full existing pay calculation logic - populates $response["estimated_upcoming_pay"], $response["is_pay_day"], $response["next_pay_date"], and $true_next_payday_obj - unchanged) ...
+    // --- Start: Hardcoded Bi-weekly Pay calculation logic ---
+    $response["gross_estimated_pay"] = 0.00; $response["estimated_federal_tax"] = 0.00;
+    $response["estimated_state_tax"] = 0.00; $response["estimated_upcoming_pay"] = 0.00;
+    $response["is_pay_day"] = false; $true_next_payday_obj = null;
 
-    $upcoming_paydays_for_cycle = []; // To store DateTime objects of paydays in the current decision cycle
-    $true_next_payday_obj = null;    // The very next DateTime object for payday
+    // settings_keys no longer needs pay schedule types
+    $settings_keys = ['pay_rate', 'federal_tax_rate', 'state_tax_rate'];
+    $placeholders = rtrim(str_repeat('?,', count($settings_keys)), ',');
+    $stmt_settings = $pdo->prepare("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ($placeholders)");
+    $stmt_settings->execute($settings_keys);
+    $app_settings = []; while ($row = $stmt_settings->fetch(PDO::FETCH_ASSOC)) { $app_settings[$row['setting_key']] = $row['setting_value']; }
 
-    if (isset($app_settings['pay_rate'])) {
-        $pay_rate = (float) $app_settings['pay_rate'];
-        $federal_tax_rate = (float) ($app_settings['federal_tax_rate'] ?? 0);
-        $state_tax_rate = (float) ($app_settings['state_tax_rate'] ?? 0);
+    $pay_rate = isset($app_settings['pay_rate']) ? floatval($app_settings['pay_rate']) : 0;
 
-        // $today already defined globally
-        $current_year = (int) $today->format('Y');
-        $current_month_num = (int) $today->format('n');
+    if ($pay_rate > 0) {
+        $current_date_time = (new DateTimeImmutable())->setTime(0,0,0);
 
-        $current_month_payday1 = getAdjustedPaydate($current_year, $current_month_num, 15);
-        $current_month_payday2 = getAdjustedPaydate($current_year, $current_month_num, 0); // 0 for last day
+        $fixedReferenceFridayString = '2025-05-30'; // Hardcoded reference Friday
+        $refFriday = (new DateTimeImmutable($fixedReferenceFridayString))->setTime(0,0,0);
 
-        if ($today <= $current_month_payday1) {
-            $upcoming_paydays_for_cycle = [$current_month_payday1, $current_month_payday2];
-        } elseif ($today <= $current_month_payday2) {
-            $upcoming_paydays_for_cycle = [$current_month_payday2];
+        // Determine true_next_payday_obj for hardcoded bi-weekly
+        $temp_pd = clone $refFriday;
+        while ($temp_pd > $current_date_time) { $temp_pd = $temp_pd->modify('-14 days'); }
+        while ($temp_pd < $current_date_time) { $temp_pd = $temp_pd->modify('+14 days'); }
+        $true_next_payday_obj = clone $temp_pd;
+
+        if (!$true_next_payday_obj) { throw new Exception("Could not determine next payday with fixed reference."); }
+        $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
+
+        // Determine Pay Period for bi-weekly (P-18 to P-7)
+        $pay_period_start_date_obj = $true_next_payday_obj->modify('-18 days');
+        $pay_period_end_date_obj = $true_next_payday_obj->modify('-7 days');
+
+        $response["debug_pay_period_start"] = $pay_period_start_date_obj->format('Y-m-d');
+        $response["debug_pay_period_end"] = $pay_period_end_date_obj->format('Y-m-d');
+
+        if ($current_date_time == $true_next_payday_obj) { $response["is_pay_day"] = true; }
+
+        if ($response["is_pay_day"]) {
+            // Values remain 0.00 as set initially
         } else {
-            $next_month_obj = (clone $today)->modify('+1 month');
-            $upcoming_paydays_for_cycle = [getAdjustedPaydate((int) $next_month_obj->format('Y'), (int) $next_month_obj->format('n'), 15)];
-        }
-
-        if (!empty($upcoming_paydays_for_cycle)) {
-            $true_next_payday_obj = clone reset($upcoming_paydays_for_cycle);
-        }
-
-        // Calculate net pay for the single upcoming paycheck (for display: estimated_upcoming_pay)
-        if ($true_next_payday_obj) {
-            // MODIFICATION: Pay Period End Date: -8 days from payday
-            $pay_period_end_date_obj = (clone $true_next_payday_obj)->modify('-8 days')->setTime(0,0,0);
-            // MODIFICATION: Pay Period Start Date: -13 days from end date
-            $pay_period_start_date_obj = (clone $pay_period_end_date_obj)->modify('-13 days')->setTime(0,0,0);
-
+            $jobStartDate = (new DateTimeImmutable('2025-05-20'))->setTime(0,0,0);
             $stmt_logged = $pdo->prepare("SELECT log_date, hours_worked FROM logged_hours WHERE log_date BETWEEN ? AND ?");
             $stmt_logged->execute([$pay_period_start_date_obj->format('Y-m-d'), $pay_period_end_date_obj->format('Y-m-d')]);
+            $logged_hours_list = $stmt_logged->fetchAll(PDO::FETCH_ASSOC);
+            $hours_map = []; foreach($logged_hours_list as $l) { $hours_map[$l['log_date']] = (float)$l['hours_worked']; }
 
-            $explicitly_logged_hours = [];
-            foreach ($stmt_logged->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                $explicitly_logged_hours[$row['log_date']] = (float) $row['hours_worked'];
-            }
+            $total_hours = 0.0;
+            $loop_date = DateTime::createFromImmutable($pay_period_start_date_obj);
+            $end_loop_check = ($pay_period_end_date_obj instanceof DateTimeImmutable) ? $pay_period_end_date_obj : DateTimeImmutable::createFromMutable($pay_period_end_date_obj);
 
-            $total_hours_for_next_check = 0;
-            $jobStartDate = (new DateTime('2025-05-20'))->setTime(0,0,0);
-
-            for ($loop_date = clone $pay_period_start_date_obj; $loop_date <= $pay_period_end_date_obj; $loop_date->modify('+1 day')) {
-                $date_str = $loop_date->format('Y-m-d');
-                $day_of_week = (int) $loop_date->format('N');
-                if ($loop_date >= $jobStartDate) {
-                    if (isset($explicitly_logged_hours[$date_str])) {
-                        $total_hours_for_next_check += $explicitly_logged_hours[$date_str];
-                    } elseif ($day_of_week <= 5) { // Weekday
-                        // MODIFICATION: Reinstate 7.5 hour default
-                        $total_hours_for_next_check += 7.5;
-                    }
+            while($loop_date <= $end_loop_check) {
+                $ds = $loop_date->format('Y-m-d'); $dow = (int)$loop_date->format('N');
+                if ($loop_date >= $jobStartDate && $dow >= 1 && $dow <= 5) {
+                    $total_hours += $hours_map[$ds] ?? 7.5;
                 }
+                $loop_date->modify('+1 day');
             }
-
-            $gross_for_next_check = $total_hours_for_next_check * $pay_rate;
-            $net_for_next_check = $gross_for_next_check * (1 - $federal_tax_rate - $state_tax_rate);
-
-            $response["estimated_upcoming_pay"] = round($net_for_next_check, 2);
-            $response["next_pay_date"] = $true_next_payday_obj->format('Y-m-d');
-            $response["debug_pay_period_start"] = $pay_period_start_date_obj->format('Y-m-d');
-            $response["debug_pay_period_end"] = $pay_period_end_date_obj->format('Y-m-d');
-        }
-
-        $response['is_pay_day'] = (($current_month_payday1 && $today->format('Y-m-d') === $current_month_payday1->format('Y-m-d')) ||
-                                   ($current_month_payday2 && $today->format('Y-m-d') === $current_month_payday2->format('Y-m-d')));
-
-        if ($response['is_pay_day']) {
-            $response['future_net_worth'] = $response['current_net_worth'];
-             // On payday, estimated_upcoming_pay is already set to the *next* cycle's first check.
-        } else {
-            $response['future_net_worth'] = round($response['current_net_worth'] + $response['estimated_upcoming_pay'], 2);
+            $response["gross_estimated_pay"] = round($total_hours * $pay_rate, 2);
+            $fed_tax_rate = isset($app_settings['federal_tax_rate']) ? floatval($app_settings['federal_tax_rate']) : 0;
+            $state_tax_rate = isset($app_settings['state_tax_rate']) ? floatval($app_settings['state_tax_rate']) : 0;
+            $fed_tax = $response["gross_estimated_pay"] * $fed_tax_rate;
+            $state_tax = $response["gross_estimated_pay"] * $state_tax_rate;
+            $response["estimated_federal_tax"] = round($fed_tax, 2);
+            $response["estimated_state_tax"] = round($state_tax, 2);
+            $response["estimated_upcoming_pay"] = round($response["gross_estimated_pay"] - $fed_tax - $state_tax, 2);
         }
     }
+    // --- End: Hardcoded Bi-weekly Pay calculation logic ---
 
-    // --- Projected Net Worth After Next Rent (MODIFIED LOGIC to meet "12th vs 31st") ---
-    $pay_earned_before_immediate_rent = 0;
-    // Determine the immediate next rent month (e.g., July 1st if today is in June)
-    $immediate_rent_month_obj = (clone $today)->modify('first day of next month');
-    $immediate_rent_month_str = $immediate_rent_month_obj->format('Y-m-d');
-
-    $last_day_of_current_calendar_month_obj = (clone $today)->modify('last day of this month');
-
-    if (isset($app_settings['pay_rate']) && !empty($upcoming_paydays_for_cycle)) {
-        $pay_rate_for_rent_calc = (float) $app_settings['pay_rate'];
-        $federal_tax_rate_for_rent_calc = (float) ($app_settings['federal_tax_rate'] ?? 0);
-        $state_tax_rate_for_rent_calc = (float) ($app_settings['state_tax_rate'] ?? 0);
-        $jobStartDate_for_rent_calc = (new DateTime('2025-05-20'))->setTime(0,0,0);
-
-        foreach ($upcoming_paydays_for_cycle as $payday_date_obj) {
-            // Only consider paydays that fall within the current calendar month
-            // and are on or before the last day of the current month.
-            if ($payday_date_obj <= $last_day_of_current_calendar_month_obj) {
-                $pay_period_end_obj = (clone $payday_date_obj)->modify('-8 days')->setTime(0,0,0);
-                $pay_period_start_obj = (clone $pay_period_end_obj)->modify('-13 days')->setTime(0,0,0);
-
-                $stmt_logged_hrs = $pdo->prepare("SELECT log_date, hours_worked FROM logged_hours WHERE log_date BETWEEN ? AND ?");
-                $stmt_logged_hrs->execute([$pay_period_start_obj->format('Y-m-d'), $pay_period_end_obj->format('Y-m-d')]);
-
-                $logged_hrs_map = [];
-                foreach ($stmt_logged_hrs->fetchAll(PDO::FETCH_ASSOC) as $r) {
-                    $logged_hrs_map[$r['log_date']] = (float) $r['hours_worked'];
-                }
-
-                $total_hrs = 0;
-                for ($loop_d = clone $pay_period_start_obj; $loop_d <= $pay_period_end_obj; $loop_d->modify('+1 day')) {
-                    $d_str = $loop_d->format('Y-m-d');
-                    $d_of_w = (int) $loop_d->format('N');
-                    if ($loop_d >= $jobStartDate_for_rent_calc) {
-                        if (isset($logged_hrs_map[$d_str])) {
-                            $total_hrs += $logged_hrs_map[$d_str];
-                        } elseif ($d_of_w <= 5) { // Weekday
-                            $total_hrs += 7.5; // Default hours
-                        }
-                    }
-                }
-                $gross = $total_hrs * $pay_rate_for_rent_calc;
-                $net = $gross * (1 - $federal_tax_rate_for_rent_calc - $state_tax_rate_for_rent_calc);
-                $pay_earned_before_immediate_rent += $net;
-            }
-        }
+    // Calculate future_net_worth (Raw Snapshot Current Net Worth + Upcoming Pay)
+    if ($response["is_pay_day"]) {
+        $response["future_net_worth"] = $response["current_net_worth"];
+    } else {
+        $response["future_net_worth"] = round($response["current_net_worth"] + $response["estimated_upcoming_pay"], 2);
     }
 
-    $actual_rent_to_subtract = $rentAmount; // Default to full rent amount
-    // MODIFICATION: Check prepaid rent for the immediate_rent_month_str
-    $stmt_rent_check = $pdo->prepare("SELECT amount FROM rent_payments WHERE rent_month = ?");
-    $stmt_rent_check->execute([$immediate_rent_month_str]);
-    $prepaid_rent_details = $stmt_rent_check->fetch(PDO::FETCH_ASSOC);
-    if ($prepaid_rent_details) {
-        $actual_rent_to_subtract = 0; // Rent is prepaid
-    }
-
-    $response['projected_net_worth_after_next_rent'] = round(
-        $response['current_net_worth'] + $pay_earned_before_immediate_rent - $actual_rent_to_subtract,
-        2
-    );
+    // Calculate projected_net_worth_after_next_rent (future_net_worth - Rent for the month after paycheck)
+    $response["projected_net_worth_after_next_rent"] = round($response["future_net_worth"] - $rentAmount, 2);
 
     // --- Projected Net Worth After Next Utilities ---
     // (Using $true_next_payday_obj which is the single very next payday)

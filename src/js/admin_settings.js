@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const stateTaxRateInput = document.getElementById('state_tax_rate');
 
     // Fetch current settings on page load
-    fetch('settings.php') // This API endpoint needs to exist and return current settings
+    fetch('settings.php')
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errData => {
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
             payRateInput.value = data.pay_rate || '';
             federalTaxRateInput.value = data.federal_tax_rate ? (parseFloat(data.federal_tax_rate) * 100).toFixed(2) : '0.00';
             stateTaxRateInput.value = data.state_tax_rate ? (parseFloat(data.state_tax_rate) * 100).toFixed(2) : '0.00';
+            // Pay schedule fields removed
         })
         .catch(error => {
             feedbackDiv.textContent = 'Error loading settings: ' + error.message;
@@ -53,10 +54,9 @@ document.addEventListener('DOMContentLoaded', function() {
             feedbackDiv.classList.add('error');
             return;
         }
-        // You could add more validation here, e.g. pd2 >= pd1,
-        // but settings.php API should also handle this.
+        // Pay Schedule Validation removed
 
-        fetch('settings.php', { // This API endpoint needs to handle POST to update settings
+        fetch('settings.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settingsData)

@@ -23,6 +23,7 @@ include 'templates/header.php';
                     <label for="state_tax_rate">State Tax Rate (%):</label>
                     <input type="number" id="state_tax_rate" name="state_tax_rate" step="0.01" min="0" max="100" required>
                 </div>
+                <!-- Pay schedule configuration removed as it's now hardcoded -->
                 <button type="submit">Save Settings</button>
             </form>
             <div id="settings-feedback" class="feedback-message"></div>

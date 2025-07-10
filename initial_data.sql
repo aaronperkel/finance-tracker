@@ -17,7 +17,13 @@ INSERT INTO accounts (name, type, sort_order) VALUES ('Chase Credit', 'Liability
 -- These settings control application behavior, such as pay calculations.
 
 INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_rate', '20.00'); -- Hourly pay rate
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_day_1', '15');   -- First payday of the month
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_day_2', '30');   -- Second payday of the month (use last day for months with < 30 days)
+-- Remove old payday keys if they exist (optional, depends on migration strategy)
+-- DELETE FROM app_settings WHERE setting_key IN ('pay_day_1', 'pay_day_2');
+-- Remove pay schedule specific keys as they are no longer used.
+-- DELETE FROM app_settings WHERE setting_key IN ('pay_schedule_type', 'pay_schedule_detail1', 'pay_schedule_detail2');
+
 INSERT INTO app_settings (setting_key, setting_value) VALUES ('federal_tax_rate', '0.15'); -- Federal income tax rate (e.g., 0.15 for 15%)
 INSERT INTO app_settings (setting_key, setting_value) VALUES ('state_tax_rate', '0.03');   -- State income tax rate (e.g., 0.03 for 3%)
+
+-- Pay schedule is now hardcoded to bi-weekly with a fixed reference date (2025-05-30).
+-- No initial data needed for pay schedule settings in the database.
