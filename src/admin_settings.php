@@ -23,29 +23,7 @@ include 'templates/header.php';
                     <label for="state_tax_rate">State Tax Rate (%):</label>
                     <input type="number" id="state_tax_rate" name="state_tax_rate" step="0.01" min="0" max="100" required>
                 </div>
-
-                <hr class="settings-divider">
-
-                <h2 class="settings-subtitle">Pay Schedule</h2>
-                <div>
-                    <label for="pay_schedule_type">Pay Schedule Type:</label>
-                    <select id="pay_schedule_type" name="pay_schedule_type">
-                        <option value="bi-weekly">Bi-weekly (Every 2 Weeks)</option>
-                        <option value="semi-monthly">Semi-monthly (Twice a Month)</option>
-                        <option value="monthly">Monthly</option>
-                    </select>
-                </div>
-
-                <div id="pay_schedule_detail1_container">
-                    <label for="pay_schedule_detail1" id="pay_schedule_detail1_label">Reference Friday:</label>
-                    <input type="date" id="pay_schedule_detail1" name="pay_schedule_detail1">
-                </div>
-
-                <div id="pay_schedule_detail2_container" style="display: none;">
-                    <label for="pay_schedule_detail2" id="pay_schedule_detail2_label">Second Payday (Day of Month, 0 for last):</label>
-                    <input type="number" id="pay_schedule_detail2" name="pay_schedule_detail2" min="0" max="31">
-                </div>
-
+                <!-- Pay schedule configuration removed as it's now hardcoded -->
                 <button type="submit">Save Settings</button>
             </form>
             <div id="settings-feedback" class="feedback-message"></div>

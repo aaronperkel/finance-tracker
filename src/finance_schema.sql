@@ -29,20 +29,14 @@ CREATE TABLE logged_hours (
 
 CREATE TABLE app_settings (
   setting_key  VARCHAR(50)   PRIMARY KEY,
-  setting_value VARCHAR(100) NOT NULL -- For 'pay_schedule_type', ENUM('bi-weekly', 'semi-monthly', 'monthly'). For 'pay_schedule_detail1', 'pay_schedule_detail2', holds relevant date/day.
+  setting_value VARCHAR(100) NOT NULL
 );
--- Example app_settings entries:
--- ('pay_schedule_type', 'bi-weekly')
--- ('pay_schedule_detail1', '2024-01-05') -- Reference Friday for bi-weekly
--- ('pay_schedule_detail2', NULL)
---
--- ('pay_schedule_type', 'semi-monthly')
--- ('pay_schedule_detail1', '15') -- Day of month
--- ('pay_schedule_detail2', '0') -- 0 for last day of month
---
--- ('pay_schedule_type', 'monthly')
--- ('pay_schedule_detail1', '25') -- Day of month
--- ('pay_schedule_detail2', NULL)
+-- Key app_settings examples:
+-- ('pay_rate', '25.00')
+-- ('federal_tax_rate', '0.15')
+-- ('state_tax_rate', '0.05')
+-- Pay schedule is now hardcoded to bi-weekly with a fixed reference date (2025-05-30).
+-- Thus, no database settings are needed for pay schedule type or details.
 
 -- After applying the schema, you'll need to add initial data.
 -- Example for Receivables account:

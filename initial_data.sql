@@ -19,11 +19,11 @@ INSERT INTO accounts (name, type, sort_order) VALUES ('Chase Credit', 'Liability
 INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_rate', '20.00'); -- Hourly pay rate
 -- Remove old payday keys if they exist (optional, depends on migration strategy)
 -- DELETE FROM app_settings WHERE setting_key IN ('pay_day_1', 'pay_day_2');
+-- Remove pay schedule specific keys as they are no longer used.
+-- DELETE FROM app_settings WHERE setting_key IN ('pay_schedule_type', 'pay_schedule_detail1', 'pay_schedule_detail2');
+
 INSERT INTO app_settings (setting_key, setting_value) VALUES ('federal_tax_rate', '0.15'); -- Federal income tax rate (e.g., 0.15 for 15%)
 INSERT INTO app_settings (setting_key, setting_value) VALUES ('state_tax_rate', '0.03');   -- State income tax rate (e.g., 0.03 for 3%)
 
--- Default pay schedule: Bi-weekly, with a placeholder reference Friday.
--- The user should update 'pay_schedule_detail1' to their actual reference Friday via the admin UI.
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_schedule_type', 'bi-weekly');
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_schedule_detail1', '2024-01-05'); -- Example: First Friday of 2024
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('pay_schedule_detail2', ''); -- Not used for bi-weekly
+-- Pay schedule is now hardcoded to bi-weekly with a fixed reference date (2025-05-30).
+-- No initial data needed for pay schedule settings in the database.

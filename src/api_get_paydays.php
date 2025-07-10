@@ -37,94 +37,52 @@ if ($year_param === null || $year_param === false || $year_param < 1900 || $year
 }
 
 try {
-    // Fetch pay schedule settings from the database
-    $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM app_settings
-                                  WHERE setting_key IN ('pay_schedule_type', 'pay_schedule_detail1', 'pay_schedule_detail2')");
-    $app_settings = [];
-    while ($row = $settings_stmt->fetch(PDO::FETCH_ASSOC)) {
-        $app_settings[$row['setting_key']] = $row['setting_value'];
-    }
+    // Pay schedule is now hardcoded: Bi-weekly, with reference date 2025-05-30.
+    // No need to fetch settings from DB for schedule type.
+    // The adjustToFriday function is not strictly needed if the reference is a known Friday
+    // and we only add multiples of 14 days. However, it can be kept for robustness
+    // or if any other part of the system might use it. For this specific API,
+    // direct calculation is simpler.
 
-    $pay_schedule_type = $app_settings['pay_schedule_type'] ?? 'semi-monthly'; // Default if not set
-    $detail1 = $app_settings['pay_schedule_detail1'] ?? null;
-    $detail2 = $app_settings['pay_schedule_detail2'] ?? null;
+    $fixedReferenceFridayString = '2025-05-30';
+    $referenceFriday = new DateTimeImmutable($fixedReferenceFridayString); // This is a known Friday
+    $referenceFriday = $referenceFriday->setTime(0,0,0);
 
     $paydays = [];
-    $startDate = new DateTimeImmutable("$year_param-$month_param-01");
-    $endDate = (clone $startDate)->modify('last day of this month');
+    $requestedMonthStartDate = new DateTimeImmutable("$year_param-$month_param-01");
+    $requestedMonthEndDate = $requestedMonthStartDate->modify('last day of this month');
 
-    if ($pay_schedule_type === 'bi-weekly') {
-        if (empty($detail1) || !($referenceFriday = DateTimeImmutable::createFromFormat('Y-m-d', $detail1))) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Bi-weekly schedule selected, but Reference Friday (pay_schedule_detail1) is missing or invalid in settings.']);
-            exit;
+    // Find the first payday in the cycle that is relevant to the requested month.
+    // Start from the reference and move forwards or backwards by 14-day steps.
+    $currentPayday = clone $referenceFriday;
+
+    if ($currentPayday > $requestedMonthEndDate) { // Reference is after the requested month
+        // Go backwards from reference to find a payday before or in the month
+        while ($currentPayday > $requestedMonthEndDate) {
+            $currentPayday = $currentPayday->modify('-14 days');
         }
-        $referenceFriday = $referenceFriday->setTime(0,0,0);
-
-        // Ensure the reference Friday itself is a Friday.
-        if ((int)$referenceFriday->format('N') !== 5) {
-             // This should ideally be caught during settings validation, but good to double check.
-             // Or, adjust it to the nearest Friday. For now, error out if not set correctly.
-            error_log("Reference Friday setting (pay_schedule_detail1: {$detail1}) is not actually a Friday.");
-            // Let's try to find the first valid Friday on or after this reference for calculation start
-            while((int)$referenceFriday->format('N') !== 5) {
-                $referenceFriday = $referenceFriday->modify('+1 day');
-            }
-        }
-
-        // Find the first payday on or after the start of the requested month that matches the bi-weekly cycle.
-        $currentPayday = clone $referenceFriday;
-        while ($currentPayday < $startDate) {
+        // At this point, $currentPayday is the first payday on or before the requested month's end.
+        // If it's before the month's start, the next one might be in the month.
+        if ($currentPayday < $requestedMonthStartDate) {
             $currentPayday = $currentPayday->modify('+14 days');
         }
-
-        // Add all paydays in that cycle that fall within the requested month
-        while ($currentPayday <= $endDate) {
-            // All bi-weekly paydays should inherently be Fridays based on the reference.
-            // No need for adjustToFriday() unless reference was not a Friday.
-            $paydays[] = $currentPayday->format('Y-m-d');
+    } else { // Reference is before or during the requested month
+        // Go forwards from reference to find the first payday in or after the month's start
+        while ($currentPayday < $requestedMonthStartDate) {
             $currentPayday = $currentPayday->modify('+14 days');
         }
-
-    } elseif ($pay_schedule_type === 'semi-monthly') {
-        $day1 = ($detail1 !== null && $detail1 !== '') ? (int)$detail1 : 15; // Default to 15
-        $day2_setting = ($detail2 !== null && $detail2 !== '') ? (int)$detail2 : 0; // Default to last day (0)
-
-        $paydate1 = new DateTime();
-        $paydate1->setDate($year_param, $month_param, $day1)->setTime(0,0,0);
-        $paydays[] = adjustToFriday(clone $paydate1)->format('Y-m-d');
-
-        $paydate2 = new DateTime();
-        if ($day2_setting === 0) { // Last day of month
-            $paydate2->setDate($year_param, $month_param, 1)->modify('last day of this month')->setTime(0,0,0);
-        } else {
-            $paydate2->setDate($year_param, $month_param, $day2_setting)->setTime(0,0,0);
-        }
-        // Avoid duplicate if day1 and day2 result in same adjusted Friday (e.g. 15th is Sat, 16th is Sun)
-        $adjusted_paydate2_str = adjustToFriday(clone $paydate2)->format('Y-m-d');
-        if (!in_array($adjusted_paydate2_str, $paydays)) {
-            $paydays[] = $adjusted_paydate2_str;
-        }
-        sort($paydays); // Ensure they are in chronological order
-
-    } elseif ($pay_schedule_type === 'monthly') {
-        $day_setting = ($detail1 !== null && $detail1 !== '') ? (int)$detail1 : 0; // Default to last day
-
-        $paydate = new DateTime();
-        if ($day_setting === 0) { // Last day of month
-            $paydate->setDate($year_param, $month_param, 1)->modify('last day of this month')->setTime(0,0,0);
-        } else {
-            $paydate->setDate($year_param, $month_param, $day_setting)->setTime(0,0,0);
-        }
-        $paydays[] = adjustToFriday(clone $paydate)->format('Y-m-d');
-    } else {
-        http_response_code(500);
-        echo json_encode(['error' => 'Unknown pay_schedule_type in settings.']);
-        exit;
     }
 
-    // Remove duplicate dates just in case, and sort
-    $response = array_values(array_unique($paydays));
+    // Now $currentPayday is the first potential payday in the cycle that is >= requestedMonthStartDate.
+    // Add all paydays in that cycle that fall within the requested month.
+    while ($currentPayday <= $requestedMonthEndDate) {
+        if ($currentPayday >= $requestedMonthStartDate) { // Ensure it's within the current month
+             $paydays[] = $currentPayday->format('Y-m-d');
+        }
+        $currentPayday = $currentPayday->modify('+14 days');
+    }
+
+    $response = array_values(array_unique($paydays)); // Ensure uniqueness, though direct cycle should be unique
     sort($response);
 
     echo json_encode($response);
