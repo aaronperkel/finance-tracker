@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const summaryErrorDiv = document.getElementById('summary-error');
     let nwChartInstance = null;
 

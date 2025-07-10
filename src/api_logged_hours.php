@@ -46,7 +46,7 @@ try {
         foreach ($logged_hours_for_month as $row) {
             $dateObj = new DateTime($row['log_date']);
             $dayOfMonth = $dateObj->format('j'); // Day of the month without leading zeros
-            $response_data[$dayOfMonth] = number_format((float)$row['hours_worked'], 2, '.', '');
+            $response_data[$dayOfMonth] = number_format((float) $row['hours_worked'], 2, '.', '');
         }
     }
 

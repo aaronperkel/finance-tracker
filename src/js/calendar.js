@@ -72,7 +72,7 @@ function applyHourStyles(dayCell, hoursSpan, hoursValue) {
 }
 
 function fetchAndDisplayExpenses(displayYear, displayMonth) {
-    fetch('../api_get_upcoming_expenses.php') // Using absolute path
+    fetch('./api_get_upcoming_expenses.php') // Using absolute path
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errData => {
@@ -142,7 +142,7 @@ function renderCalendarInternal(month, year, paydays = []) {
                 if (paydays.includes(dateStr)) dayCell.classList.add('is-payday');
 
                 const currentCellDateNormalized = new Date(cellDate);
-                currentCellDateNormalized.setHours(0,0,0,0);
+                currentCellDateNormalized.setHours(0, 0, 0, 0);
                 const dayOfWeek = currentCellDateNormalized.getDay();
                 let isDisabledDay = currentCellDateNormalized < jobStartDate || dayOfWeek === 0 || dayOfWeek === 6;
 
@@ -177,11 +177,11 @@ function renderCalendarInternal(month, year, paydays = []) {
 
 function renderCalendar(month, year) {
     currentMonthYearEl.textContent = `${monthNames[month]} ${year}`;
-    fetch(`../api_get_paydays.php?year=${year}&month=${month + 1}`) // Absolute path
+    fetch(`./api_get_paydays.php?year=${year}&month=${month + 1}`) // Absolute path
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errData => { throw new Error(`HTTP ${response.status}: ${errData.error || 'Failed to fetch paydays'}`); })
-                               .catch(() => { throw new Error(`HTTP ${response.status}: Failed to fetch paydays (cannot parse error response).`); });
+                    .catch(() => { throw new Error(`HTTP ${response.status}: Failed to fetch paydays (cannot parse error response).`); });
             }
             return response.json();
         })
@@ -193,7 +193,7 @@ function renderCalendar(month, year) {
 }
 
 function fetchAndDisplayHours(apiMonth, apiYear) {
-    fetch(`../api_logged_hours.php?month=${apiMonth}&year=${apiYear}`) // Absolute path
+    fetch(`./api_logged_hours.php?month=${apiMonth}&year=${apiYear}`) // Absolute path
         .then(response => { if (!response.ok) throw new Error('Network error fetching hours.'); return response.json(); })
         .then(data => {
             for (let dayVal = 1; dayVal <= new Date(apiYear, apiMonth, 0).getDate(); dayVal++) {
@@ -270,7 +270,7 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
         rentButtonContainer.innerHTML = '<button id="rentToggleButton" class="button">Loading Rent Status...</button>';
         const rentToggleButton = rentButtonContainer.querySelector('#rentToggleButton');
         const rentMonthForAPI = getRentMonthString(clickedDateStr);
-        const fetchUrl = `/src/get_rent_status.php?rent_month=${rentMonthForAPI}`; // Corrected path
+        const fetchUrl = `./get_rent_status.php?rent_month=${rentMonthForAPI}`; // Corrected path
 
         // REMOVED ALL DEBUG ALERTS FROM THIS VERSION
         // console.log(`[CalendarJS] Rent Button: Fetching URL: ${fetchUrl}`); // Use console.log for debugging
@@ -307,12 +307,12 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
                 }
             } catch (e_parse) {
                 console.error("JSON Parse Error in get_rent_status response:", e_parse, "Raw text:", responseText);
-                throw new Error(`JSON Parse error: ${e_parse.message}. Response was: ${responseText.substring(0,200)}`);
+                throw new Error(`JSON Parse error: ${e_parse.message}. Response was: ${responseText.substring(0, 200)}`);
             }
 
             rentToggleButton.onclick = async () => {
                 rentToggleButton.disabled = true;
-                if(modalFeedbackEl) { // Ensure modalFeedbackEl exists
+                if (modalFeedbackEl) { // Ensure modalFeedbackEl exists
                     modalFeedbackEl.textContent = '';
                     modalFeedbackEl.className = '';
                 }
@@ -324,17 +324,17 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
                 if (currentStatus === 'unpaid') {
                     const rentAmountToPay = parseFloat(prompt("Enter rent amount:", rentToggleButton.dataset.rentAmount || RENT_AMOUNT_DEFAULT) || RENT_AMOUNT_DEFAULT);
                     if (isNaN(rentAmountToPay) || rentAmountToPay <= 0) {
-                        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Invalid amount entered.'; else alert('Invalid amount entered.');
-                        if(modalFeedbackEl) modalFeedbackEl.className = 'error';
+                        if (modalFeedbackEl) modalFeedbackEl.textContent = 'Invalid amount entered.'; else alert('Invalid amount entered.');
+                        if (modalFeedbackEl) modalFeedbackEl.className = 'error';
                         rentToggleButton.disabled = false;
                         return;
                     }
                     const paidDate = getTodaysDateString();
                     try {
-                        const markPaidResponse = await fetch('/src/mark_rent_paid.php', { // Absolute path
+                        const markPaidResponse = await fetch('./mark_rent_paid.php', { // Absolute path
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({rent_month: monthToActOn, paid_date: paidDate, amount: rentAmountToPay})
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rent_month: monthToActOn, paid_date: paidDate, amount: rentAmountToPay })
                         });
                         const markPaidData = await markPaidResponse.json();
                         if (!markPaidResponse.ok || markPaidData.error) throw new Error(markPaidData.error || `HTTP error ${markPaidResponse.status}`);
@@ -343,18 +343,18 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
                         rentToggleButton.dataset.rentStatus = 'paid';
                         rentToggleButton.dataset.rentAmount = rentAmountToPay;
                         if (window.refreshFinancialSummary) window.refreshFinancialSummary();
-                        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Rent marked as paid.';
-                        if(modalFeedbackEl) modalFeedbackEl.className = 'success';
+                        if (modalFeedbackEl) modalFeedbackEl.textContent = 'Rent marked as paid.';
+                        if (modalFeedbackEl) modalFeedbackEl.className = 'success';
                     } catch (err) {
-                        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Error marking rent paid: ' + err.message; else alert('Error marking rent paid: ' + err.message);
-                        if(modalFeedbackEl) modalFeedbackEl.className = 'error';
+                        if (modalFeedbackEl) modalFeedbackEl.textContent = 'Error marking rent paid: ' + err.message; else alert('Error marking rent paid: ' + err.message);
+                        if (modalFeedbackEl) modalFeedbackEl.className = 'error';
                     }
                 } else { // currentStatus === 'paid'
                     try {
-                        const deleteResponse = await fetch('/src/delete_rent_payment.php', { // Absolute path
+                        const deleteResponse = await fetch('./delete_rent_payment.php', { // Absolute path
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({rent_month: monthToActOn})
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rent_month: monthToActOn })
                         });
                         const deleteData = await deleteResponse.json();
                         if (!deleteResponse.ok || deleteData.error) throw new Error(deleteData.error || `HTTP error ${deleteResponse.status}`);
@@ -362,11 +362,11 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
                         rentToggleButton.textContent = 'Mark Current Month Rent Paid';
                         rentToggleButton.dataset.rentStatus = 'unpaid';
                         if (window.refreshFinancialSummary) window.refreshFinancialSummary();
-                        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Rent marked as unpaid.';
-                        if(modalFeedbackEl) modalFeedbackEl.className = 'success';
+                        if (modalFeedbackEl) modalFeedbackEl.textContent = 'Rent marked as unpaid.';
+                        if (modalFeedbackEl) modalFeedbackEl.className = 'success';
                     } catch (err) {
-                        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Error marking rent unpaid: ' + err.message; else alert('Error marking rent unpaid: ' + err.message);
-                        if(modalFeedbackEl) modalFeedbackEl.className = 'error';
+                        if (modalFeedbackEl) modalFeedbackEl.textContent = 'Error marking rent unpaid: ' + err.message; else alert('Error marking rent unpaid: ' + err.message);
+                        if (modalFeedbackEl) modalFeedbackEl.className = 'error';
                     }
                 }
                 rentToggleButton.disabled = false;
@@ -382,7 +382,7 @@ async function setupRentButton(modalContentElement, clickedDateStr) {
             } else {
                 alert('Could not load rent status: ' + error.message);
             }
-            if(rentToggleButton) {
+            if (rentToggleButton) {
                 rentToggleButton.textContent = 'Error loading status';
                 rentToggleButton.disabled = false;
             }
@@ -403,47 +403,48 @@ window.addEventListener('click', (event) => {
 saveHoursBtn.addEventListener('click', () => {
     const hours = modalHoursInput.value;
     if (hours === '' || parseFloat(hours) < 0 || parseFloat(hours) > 24) {
-        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Please enter a valid number of hours (0-24).'; else alert('Please enter a valid number of hours (0-24).');
-        if(modalFeedbackEl) modalFeedbackEl.className = 'error';
+        if (modalFeedbackEl) modalFeedbackEl.textContent = 'Please enter a valid number of hours (0-24).'; else alert('Please enter a valid number of hours (0-24).');
+        if (modalFeedbackEl) modalFeedbackEl.className = 'error';
         return;
     }
     if (!currentModalDate) return;
 
-    if(modalFeedbackEl) modalFeedbackEl.textContent = '';
-    if(modalFeedbackEl) modalFeedbackEl.className = '';
+    if (modalFeedbackEl) modalFeedbackEl.textContent = '';
+    if (modalFeedbackEl) modalFeedbackEl.className = '';
 
     const formData = new FormData();
     formData.append('log_date', currentModalDate);
     formData.append('hours_worked', hours);
 
-    fetch('/src/log_hours.php', { // Absolute path
+    fetch('./log_hours.php', { // Absolute path
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            if(modalFeedbackEl) modalFeedbackEl.textContent = result.success;
-            if(modalFeedbackEl) modalFeedbackEl.className = 'success';
-            const hoursSpan = document.getElementById(`hours-${currentModalDate}`);
-            const cell = hoursSpan ? hoursSpan.closest('td') : null;
-            if (cell && hoursSpan) {
-                const newHours = parseFloat(hours);
-                applyHourStyles(cell, hoursSpan, newHours);
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                if (modalFeedbackEl) modalFeedbackEl.textContent = result.success;
+                if (modalFeedbackEl) modalFeedbackEl.className = 'success';
+                const hoursSpan = document.getElementById(`hours-${currentModalDate}`);
+                const cell = hoursSpan ? hoursSpan.closest('td') : null;
+                if (cell && hoursSpan) {
+                    const newHours = parseFloat(hours);
+                    applyHourStyles(cell, hoursSpan, newHours);
+                }
+                setTimeout(() => { modal.style.display = 'none'; }, 1000);
+            } else if (result.error) {
+                if (modalFeedbackEl) modalFeedbackEl.textContent = 'Error: ' + result.error; else alert('Error: ' + result.error);
+                if (modalFeedbackEl) modalFeedbackEl.className = 'error';
+            } else {
+                if (modalFeedbackEl) modalFeedbackEl.textContent = 'Error: Unexpected response.'; else alert('Error: Unexpected response.');
+                if (modalFeedbackEl) modalFeedbackEl.className = 'error';
             }
-            setTimeout(() => { modal.style.display = 'none'; }, 1000);
-        } else if (result.error) {
-            if(modalFeedbackEl) modalFeedbackEl.textContent = 'Error: ' + result.error; else alert('Error: ' + result.error);
-            if(modalFeedbackEl) modalFeedbackEl.className = 'error';
-        } else {
-            if(modalFeedbackEl) modalFeedbackEl.textContent = 'Error: Unexpected response.'; else alert('Error: Unexpected response.');
-            if(modalFeedbackEl) modalFeedbackEl.className = 'error';
-        }
-    })
-    .catch(error => {
-        if(modalFeedbackEl) modalFeedbackEl.textContent = 'Request failed: ' + error.message; else alert('Request failed: ' + error.message);
-        if(modalFeedbackEl) modalFeedbackEl.className = 'error';
-    });
+        })
+        .catch(error => {
+            if (modalFeedbackEl) modalFeedbackEl.textContent = 'Request failed: ' + error.message; else alert('Request failed: ' + error.message);
+            if (modalFeedbackEl) modalFeedbackEl.className = 'error';
+        });
 });
 
 renderCalendar(displayMonth, displayYear);
+

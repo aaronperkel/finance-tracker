@@ -10,8 +10,9 @@ header('Content-Type: application/json');
  * @param DateTime $date The date to adjust.
  * @return DateTime The adjusted date (guaranteed to be a Friday or original date if already Friday).
  */
-function adjustToFriday(DateTime $date): DateTime {
-    $dayOfWeek = (int)$date->format('N'); // 1 (Mon) to 7 (Sun)
+function adjustToFriday(DateTime $date): DateTime
+{
+    $dayOfWeek = (int) $date->format('N'); // 1 (Mon) to 7 (Sun)
     if ($dayOfWeek === 6) { // Saturday
         $date->modify('-1 day');
     } elseif ($dayOfWeek === 7) { // Sunday
@@ -46,7 +47,7 @@ try {
 
     $fixedReferenceFridayString = '2025-05-30';
     $referenceFriday = new DateTimeImmutable($fixedReferenceFridayString); // This is a known Friday
-    $referenceFriday = $referenceFriday->setTime(0,0,0);
+    $referenceFriday = $referenceFriday->setTime(0, 0, 0);
 
     $paydays = [];
     $requestedMonthStartDate = new DateTimeImmutable("$year_param-$month_param-01");
@@ -77,7 +78,7 @@ try {
     // Add all paydays in that cycle that fall within the requested month.
     while ($currentPayday <= $requestedMonthEndDate) {
         if ($currentPayday >= $requestedMonthStartDate) { // Ensure it's within the current month
-             $paydays[] = $currentPayday->format('Y-m-d');
+            $paydays[] = $currentPayday->format('Y-m-d');
         }
         $currentPayday = $currentPayday->modify('+14 days');
     }

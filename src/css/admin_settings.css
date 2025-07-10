@@ -1,6 +1,7 @@
 /* admin_settings.css */
 
-.container { /* Settings page specific container width */
+.container {
+    /* Settings page specific container width */
     max-width: 800px;
     /* Common padding is in common.css */
 }
@@ -10,7 +11,7 @@
     background-color: #fff;
     padding: 25px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* Form elements in admin_settings.php use common.css styles.
@@ -22,12 +23,14 @@
 /* Feedback Messages for settings page */
 /* #settings-feedback uses .feedback-message from common.css for base styling and colors */
 #settings-feedback {
-    margin-top: 20px; /* Specific margin for settings feedback */
+    margin-top: 20px;
+    /* Specific margin for settings feedback */
     /* padding, border-radius, font-weight, text-align are from .feedback-message */
     /* Ensure it also has feedback-message class in HTML to get base styles */
 }
 
-#settings-feedback:empty { /* Hide if empty */
+#settings-feedback:empty {
+    /* Hide if empty */
     display: none;
 }
 

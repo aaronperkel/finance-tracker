@@ -34,16 +34,17 @@ $pdoUtilities = new PDO($dsnUtilities, $usernameUtilities, $passwordUtilities);
  * @param int $day The target day of the month (e.g., 15 or 0 for last day).
  * @return DateTime The adjusted payday.
  */
-function getAdjustedPaydate(int $year, int $month, int $day): DateTime {
+function getAdjustedPaydate(int $year, int $month, int $day): DateTime
+{
     $date = new DateTime();
     if ($day === 0) { // Special case for last day of the month
         $date->setDate($year, $month, 1)->modify('last day of this month');
     } else {
         $date->setDate($year, $month, $day);
     }
-    $date->setTime(0,0,0); // Normalize time
+    $date->setTime(0, 0, 0); // Normalize time
 
-    $dayOfWeek = (int)$date->format('N'); // 1 (Mon) to 7 (Sun)
+    $dayOfWeek = (int) $date->format('N'); // 1 (Mon) to 7 (Sun)
 
     if ($dayOfWeek === 6) { // Saturday
         $date->modify('-1 day'); // Move to Friday

@@ -73,9 +73,13 @@ try {
 
         $emoji = '💰'; // Default emoji
         if (isset($bill['fldItem'])) {
-            if (stripos($bill['fldItem'], 'Gas') !== false) { $emoji = '🔥'; }
-            elseif (stripos($bill['fldItem'], 'Electric') !== false) { $emoji = '💡'; }
-            elseif (stripos($bill['fldItem'], 'Internet') !== false) { $emoji = '🌐'; }
+            if (stripos($bill['fldItem'], 'Gas') !== false) {
+                $emoji = '🔥';
+            } elseif (stripos($bill['fldItem'], 'Electric') !== false) {
+                $emoji = '💡';
+            } elseif (stripos($bill['fldItem'], 'Internet') !== false) {
+                $emoji = '🌐';
+            }
         }
 
         $upcomingExpenses[] = [
@@ -98,8 +102,8 @@ try {
 // Debug info should be minimal if not needed, or not include user-specific utility details
 if (!empty($debug_info)) {
     // Example: only include if there was an actual error, or keep it lean.
-    if(isset($debug_info['pdo_exception']) || isset($debug_info['sql_query'])) {
-         $upcomingExpenses[] = ['_debug_utility_api' => $debug_info];
+    if (isset($debug_info['pdo_exception']) || isset($debug_info['sql_query'])) {
+        $upcomingExpenses[] = ['_debug_utility_api' => $debug_info];
     }
 }
 

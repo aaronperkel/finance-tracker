@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $type = $type_raw ? htmlspecialchars($type_raw, ENT_QUOTES, 'UTF-8') : '';
 
         $sort_order_raw = filter_input(INPUT_POST, 'sort_order', FILTER_SANITIZE_NUMBER_INT);
-        $sort_order = ($sort_order_raw === '' || $sort_order_raw === null) ? null : (int)$sort_order_raw;
+        $sort_order = ($sort_order_raw === '' || $sort_order_raw === null) ? null : (int) $sort_order_raw;
 
         // Note: $type is used in in_array check later. For that, the raw value might be more appropriate
         // if htmlspecialchars encoding interferes with the check. However, 'Asset' and 'Liability' don't contain special chars.
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // Allow empty string to become NULL, but non-empty non-integer is an error for this item
                             // Or, more strictly, throw an exception for the whole batch:
                             // throw new Exception("Invalid sort order value '".htmlspecialchars($sort_order_value)."' for account ID ".htmlspecialchars($account_id_sanitized));
-                             $sort_order_sanitized = null; // Defaulting to NULL if invalid non-empty string.
+                            $sort_order_sanitized = null; // Defaulting to NULL if invalid non-empty string.
                         }
                     }
 
@@ -147,73 +147,74 @@ $page_specific_css = 'manage_accounts.css';
 // $page_specific_js = 'manage_accounts.js'; // No significant JS for now
 include 'templates/header.php';
 ?>
-        <h1 class="page-title">Manage Accounts</h1>
+<h1 class="page-title">Manage Accounts</h1>
 
-        <?php if (!empty($feedback_message)): ?>
-            <div class="feedback-message <?= htmlspecialchars($feedback_type); ?>">
-                <?= htmlspecialchars($feedback_message); ?>
-            </div>
-        <?php endif; ?>
+<?php if (!empty($feedback_message)): ?>
+    <div class="feedback-message <?= htmlspecialchars($feedback_type); ?>">
+        <?= htmlspecialchars($feedback_message); ?>
+    </div>
+<?php endif; ?>
 
-        <h2 class="section-title">Add New Account</h2>
-        <div class="form-container">
-            <form action="manage_accounts.php" method="POST">
-                <div class="form-group">
-                    <label for="account_name">Account Name:</label>
-                    <input type="text" id="account_name" name="account_name" required>
-                </div>
-                <div class="form-group">
-                    <label for="account_type">Account Type:</label>
-                    <select id="account_type" name="account_type" required>
-                        <option value="Asset">Asset</option>
-                        <option value="Liability">Liability</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="sort_order">Sort Order (optional, lower numbers appear first):</label>
-                    <input type="number" id="sort_order" name="sort_order" placeholder="e.g., 10, 20, 100">
-                </div>
-                <button type="submit" name="add_account">Add Account</button>
-            </form>
+<h2 class="section-title">Add New Account</h2>
+<div class="form-container">
+    <form action="manage_accounts.php" method="POST">
+        <div class="form-group">
+            <label for="account_name">Account Name:</label>
+            <input type="text" id="account_name" name="account_name" required>
         </div>
+        <div class="form-group">
+            <label for="account_type">Account Type:</label>
+            <select id="account_type" name="account_type" required>
+                <option value="Asset">Asset</option>
+                <option value="Liability">Liability</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="sort_order">Sort Order (optional, lower numbers appear first):</label>
+            <input type="number" id="sort_order" name="sort_order" placeholder="e.g., 10, 20, 100">
+        </div>
+        <button type="submit" name="add_account">Add Account</button>
+    </form>
+</div>
 
-        <h2 class="section-title">Existing Accounts</h2>
-        <?php if (empty($accounts)): ?>
-            <p style="text-align:center;">No accounts found. Add one using the form above.</p>
-        <?php else: ?>
-            <form action="manage_accounts.php" method="POST">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th style="width: 120px;">Sort Order</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($accounts as $account): ?>
-                            <tr>
-                                <td data-label="Name"><?= htmlspecialchars($account['name']); ?></td>
-                                <td data-label="Type"><?= htmlspecialchars($account['type']); ?></td>
-                                <td data-label="Sort Order">
-                                    <input type="number" name="sort_orders_input[<?= $account['id']; ?>]"
-                                           value="<?= $account['sort_order'] !== null ? htmlspecialchars($account['sort_order']) : ''; ?>"
-                                           placeholder="N/A">
-                                </td>
-                                <td class="actions-cell" data-label="Actions">
-                                    <form action="manage_accounts.php" method="POST" style="display: inline;">
-                                        <input type="hidden" name="delete_account_id" value="<?= $account['id']; ?>">
-                                        <button type="submit" name="delete_account_action" class="delete-button" onclick="return confirm('Are you sure you want to delete this account? This action cannot be undone.');">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <div style="text-align: right; margin-top: 10px; margin-bottom: 20px;">
-                    <button type="submit" name="update_sort_orders">Update All Sort Orders</button>
-                </div>
-            </form>
-        <?php endif; ?>
+<h2 class="section-title">Existing Accounts</h2>
+<?php if (empty($accounts)): ?>
+    <p style="text-align:center;">No accounts found. Add one using the form above.</p>
+<?php else: ?>
+    <form action="manage_accounts.php" method="POST">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th style="width: 120px;">Sort Order</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($accounts as $account): ?>
+                    <tr>
+                        <td data-label="Name"><?= htmlspecialchars($account['name']); ?></td>
+                        <td data-label="Type"><?= htmlspecialchars($account['type']); ?></td>
+                        <td data-label="Sort Order">
+                            <input type="number" name="sort_orders_input[<?= $account['id']; ?>]"
+                                value="<?= $account['sort_order'] !== null ? htmlspecialchars($account['sort_order']) : ''; ?>"
+                                placeholder="N/A">
+                        </td>
+                        <td class="actions-cell" data-label="Actions">
+                            <form action="manage_accounts.php" method="POST" style="display: inline;">
+                                <input type="hidden" name="delete_account_id" value="<?= $account['id']; ?>">
+                                <button type="submit" name="delete_account_action" class="delete-button"
+                                    onclick="return confirm('Are you sure you want to delete this account? This action cannot be undone.');">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <div style="text-align: right; margin-top: 10px; margin-bottom: 20px;">
+            <button type="submit" name="update_sort_orders">Update All Sort Orders</button>
+        </div>
+    </form>
+<?php endif; ?>
 <?php include 'templates/footer.php'; ?>

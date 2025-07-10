@@ -7,14 +7,16 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #eef1f5; /* Lighter gray background */
+    background-color: #eef1f5;
+    /* Lighter gray background */
     color: #333;
     line-height: 1.6;
 }
 
 /* Navigation Bar */
 .navbar {
-    background-color: #2c3e50; /* Dark blue */
+    background-color: #2c3e50;
+    /* Dark blue */
     color: #fff;
     padding: 1rem 2rem;
     margin-bottom: 20px;
@@ -35,18 +37,21 @@ body {
 
 .navbar a:hover,
 .navbar a.active {
-    background-color: #3498db; /* Brighter blue for hover/active */
+    background-color: #3498db;
+    /* Brighter blue for hover/active */
 }
 
 .navbar .app-title {
     font-size: 1.5rem;
     font-weight: bold;
-    margin-right: auto; /* Pushes other links to the right if needed, or use justify-content */
+    margin-right: auto;
+    /* Pushes other links to the right if needed, or use justify-content */
 }
 
 /* Main Content Container */
 .container {
-    padding: 0 20px 20px 20px; /* Added bottom padding */
+    padding: 0 20px 20px 20px;
+    /* Added bottom padding */
     margin-left: auto;
     margin-right: auto;
 }
@@ -61,7 +66,8 @@ h1.page-title {
 label {
     display: block;
     margin-bottom: 6px;
-    font-weight: 600; /* Slightly bolder labels */
+    font-weight: 600;
+    /* Slightly bolder labels */
     color: #555;
 }
 
@@ -70,13 +76,16 @@ input[type="email"],
 input[type="password"],
 input[type="date"],
 input[type="number"] {
-    width: 100%; /* Full width of parent */
+    width: 100%;
+    /* Full width of parent */
     padding: 10px;
     margin-bottom: 12px;
-    font-size: 1rem; /* Consistent font size */
+    font-size: 1rem;
+    /* Consistent font size */
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-sizing: border-box; /* Important for width calculation */
+    box-sizing: border-box;
+    /* Important for width calculation */
     transition: border-color 0.3s ease;
 }
 
@@ -85,12 +94,14 @@ input[type="email"]:focus,
 input[type="password"]:focus,
 input[type="date"]:focus,
 input[type="number"]:focus {
-    border-color: #3498db; /* Highlight focus */
+    border-color: #3498db;
+    /* Highlight focus */
     outline: none;
 }
 
 button[type="submit"] {
-    background-color: #27ae60; /* Green */
+    background-color: #27ae60;
+    /* Green */
     color: white;
     padding: 10px 15px;
     border: none;
@@ -98,15 +109,18 @@ button[type="submit"] {
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s ease;
-    width: 100%; /* Make button full width */
+    width: 100%;
+    /* Make button full width */
 }
 
 button[type="submit"]:hover {
-    background-color: #229954; /* Darker green */
+    background-color: #229954;
+    /* Darker green */
 }
 
 /* Feedback Messages */
-.feedback-message { /* General class for feedback */
+.feedback-message {
+    /* General class for feedback */
     margin-top: 10px;
     padding: 10px;
     border-radius: 4px;
@@ -116,37 +130,53 @@ button[type="submit"]:hover {
 
 .feedback-message.success,
 #log-hours-feedback.success,
-#summary-error.success { /* Keep specific IDs for JS targeting if needed, but style via common class */
-    color: #1d6f42; /* Darker green for text */
-    background-color: #d4edda; /* Light green background */
+#summary-error.success {
+    /* Keep specific IDs for JS targeting if needed, but style via common class */
+    color: #1d6f42;
+    /* Darker green for text */
+    background-color: #d4edda;
+    /* Light green background */
     border: 1px solid #c3e6cb;
 }
 
 .feedback-message.error,
 #log-hours-feedback.error,
-#summary-error.error { /* Keep specific IDs for JS targeting if needed */
-    color: #721c24; /* Darker red for text */
-    background-color: #f8d7da; /* Light red background */
+#summary-error.error {
+    /* Keep specific IDs for JS targeting if needed */
+    color: #721c24;
+    /* Darker red for text */
+    background-color: #f8d7da;
+    /* Light red background */
     border: 1px solid #f5c6cb;
 }
-.feedback-message:empty { display: none; }
+
+.feedback-message:empty {
+    display: none;
+}
 
 
 /* Responsive adjustments for navbar common to all pages */
 @media (max-width: 768px) {
-    body nav.navbar { /* Increased specificity to override potential conflicts if any */
+    body nav.navbar {
+        /* Increased specificity to override potential conflicts if any */
         flex-direction: column;
         align-items: flex-start;
     }
-    body nav.navbar a { /* Increased specificity */
+
+    body nav.navbar a {
+        /* Increased specificity */
         margin-bottom: 5px;
         width: 100%;
         text-align: left;
     }
-    body nav.navbar .app-title { /* Increased specificity */
+
+    body nav.navbar .app-title {
+        /* Increased specificity */
         margin-bottom: 10px;
     }
-    .container { /* Common container padding adjustment */
+
+    .container {
+        /* Common container padding adjustment */
         padding: 0 15px 15px 15px;
     }
 }

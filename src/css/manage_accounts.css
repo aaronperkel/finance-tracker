@@ -1,17 +1,24 @@
 /* manage_accounts.css */
 
-.container { /* Manage Accounts specific container width */
+.container {
+    /* Manage Accounts specific container width */
     max-width: 900px;
 }
 
-h1.page-title, h2.section-title { /* h1.page-title is common, h2 specific here */
+h1.page-title,
+h2.section-title {
+    /* h1.page-title is common, h2 specific here */
     /* text-align: center; color: #2c3e50; margin-bottom: 20px; are common */
 }
+
 h2.section-title {
     margin-top: 30px;
-    text-align: center; /* ensure centered if not covered by a common h2 */
-    color: #2c3e50; /* ensure color if not covered by a common h2 */
-    margin-bottom: 20px; /* ensure margin if not covered by a common h2 */
+    text-align: center;
+    /* ensure centered if not covered by a common h2 */
+    color: #2c3e50;
+    /* ensure color if not covered by a common h2 */
+    margin-bottom: 20px;
+    /* ensure margin if not covered by a common h2 */
 }
 
 /* Form Container Styling - similar to other forms, can be common if identical */
@@ -19,28 +26,39 @@ h2.section-title {
     background-color: #fff;
     padding: 25px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 30px;
 }
+
 .form-container div.form-group {
-     margin-bottom: 15px;
+    margin-bottom: 15px;
 }
 
 /* Form elements - specific overrides or additions for manage_accounts */
 /* Common label, input, select are in common.css */
-input[type="text"], input[type="number"], select { /* From manage_accounts original style */
+input[type="text"],
+input[type="number"],
+select {
+    /* From manage_accounts original style */
     width: 100%;
-    padding: 10px; /* Slightly reduced padding from original common */
+    padding: 10px;
+    /* Slightly reduced padding from original common */
     border: 1px solid #ccc;
     border-radius: 4px;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
-    font-size: 0.95rem; /* Slightly reduced font size from original common */
+    font-size: 0.95rem;
+    /* Slightly reduced font size from original common */
 }
-input[type="text"]:focus, input[type="number"]:focus, select:focus {
-    border-color: #3498db; /* Common focus style */
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    border-color: #3498db;
+    /* Common focus style */
     outline: none;
 }
+
 /* General button[type="submit"] is in common.css */
 /* Specific buttons like delete or update sort orders might need their own classes or more specific selectors */
 
@@ -50,49 +68,67 @@ table {
     border-collapse: collapse;
     margin-bottom: 20px;
     background-color: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border-radius: 8px; /* May require overflow:hidden on table or specific cells for full effect */
-    overflow: hidden; /* Added to help with border-radius on table */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    /* May require overflow:hidden on table or specific cells for full effect */
+    overflow: hidden;
+    /* Added to help with border-radius on table */
 }
-th, td {
+
+th,
+td {
     text-align: left;
     padding: 12px;
     border-bottom: 1px solid #ddd;
 }
+
 th {
-    background-color: #f0f2f5; /* Lighter header than some other tables */
+    background-color: #f0f2f5;
+    /* Lighter header than some other tables */
     color: #333;
-    font-weight: 600; /* Common table header weight */
+    font-weight: 600;
+    /* Common table header weight */
 }
+
 tr:hover {
-     background-color: #f9f9f9; /* Slightly different hover than add_snapshot */
+    background-color: #f9f9f9;
+    /* Slightly different hover than add_snapshot */
 }
 
 /* Sort order input within table */
 td input[type="number"][name*="sort_orders_input"] {
-    width: 80px; /* Specific width */
-    padding: 5px;  /* Specific padding */
-    font-size: 0.9rem; /* Adjust font size if needed */
+    width: 80px;
+    /* Specific width */
+    padding: 5px;
+    /* Specific padding */
+    font-size: 0.9rem;
+    /* Adjust font size if needed */
 }
 
 
 /* Action cell styling */
 td.actions-cell form {
-    display: inline-block; /* Keep delete buttons on same line if space */
-    margin: 0; /* Remove default form margin */
+    display: inline-block;
+    /* Keep delete buttons on same line if space */
+    margin: 0;
+    /* Remove default form margin */
 }
-td.actions-cell button[type="submit"].delete-button { /* Added class for specificity */
-    background-color: #e74c3c; /* Red for delete */
+
+td.actions-cell button[type="submit"].delete-button {
+    /* Added class for specificity */
+    background-color: #e74c3c;
+    /* Red for delete */
     padding: 6px 10px;
     font-size: 0.85rem;
     /* width: auto; /* Override common.css width:100% for this specific button */
 }
+
 td.actions-cell button[type="submit"].delete-button:hover {
     background-color: #c0392b;
 }
 
 /* Button for "Update All Sort Orders" - if it needs specific styling */
-form > div[style*="text-align: right"] button[type="submit"] {
+form>div[style*="text-align: right"] button[type="submit"] {
     /* width: auto; /* Override common.css width:100% */
 }
 
@@ -102,8 +138,10 @@ form > div[style*="text-align: right"] button[type="submit"] {
    If specific styling is needed beyond common.css .feedback-message, it would go here.
    For example, if it's not inside a .form-container and needs specific margin:
 */
-.feedback-message { /* Assuming class is changed in HTML */
-    margin-bottom: 20px; /* Space below feedback if it's outside a form */
+.feedback-message {
+    /* Assuming class is changed in HTML */
+    margin-bottom: 20px;
+    /* Space below feedback if it's outside a form */
 }
 
 
@@ -111,47 +149,71 @@ form > div[style*="text-align: right"] button[type="submit"] {
 @media (max-width: 768px) {
     /* Navbar and container padding handled by common.css */
 
-    table, thead, tbody, th, td, tr {
+    table,
+    thead,
+    tbody,
+    th,
+    td,
+    tr {
         display: block;
     }
-    thead tr { /* Hide table headers on mobile */
+
+    thead tr {
+        /* Hide table headers on mobile */
         position: absolute;
         top: -9999px;
         left: -9999px;
     }
+
     tr {
         border: 1px solid #ccc;
         margin-bottom: 5px;
-        border-radius: 0; /* Override table radius for rows */
+        border-radius: 0;
+        /* Override table radius for rows */
     }
+
     td {
         border: none;
         border-bottom: 1px solid #eee;
         position: relative;
         padding-left: 50%;
-        text-align: right; /* Align cell content to the right */
-        white-space: normal; /* Allow text wrapping */
+        text-align: right;
+        /* Align cell content to the right */
+        white-space: normal;
+        /* Allow text wrapping */
     }
-    td:before { /* Create pseudo-header */
+
+    td:before {
+        /* Create pseudo-header */
         position: absolute;
         left: 6px;
-        width: 45%; /* Adjust as needed */
+        width: 45%;
+        /* Adjust as needed */
         padding-right: 10px;
         white-space: nowrap;
         text-align: left;
         font-weight: bold;
         content: attr(data-label);
     }
+
     td.actions-cell {
-        padding-left: 6px; /* Reset padding for action cell */
-        text-align: left; /* Align content to the left for action buttons */
+        padding-left: 6px;
+        /* Reset padding for action cell */
+        text-align: left;
+        /* Align content to the left for action buttons */
     }
+
     td.actions-cell form {
         margin-right: 5px;
-        margin-bottom: 5px; /* Stack buttons if they wrap */
+        margin-bottom: 5px;
+        /* Stack buttons if they wrap */
     }
-    td input[type="number"][name*="sort_orders_input"] { /* Ensure sort order input is usable */
-        width: 100px; /* Adjust width as needed */
-        margin-left: auto; /* If text-align right on td is an issue */
+
+    td input[type="number"][name*="sort_orders_input"] {
+        /* Ensure sort order input is usable */
+        width: 100px;
+        /* Adjust width as needed */
+        margin-left: auto;
+        /* If text-align right on td is an issue */
     }
 }

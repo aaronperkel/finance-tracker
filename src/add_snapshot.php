@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sid = $pdo->lastInsertId();
 
         if (empty($_POST['balance']) || !is_array($_POST['balance'])) {
-             throw new Exception("No balance data submitted.");
+            throw new Exception("No balance data submitted.");
         }
 
         $stmt_balance = $pdo->prepare(
@@ -78,45 +78,49 @@ $page_specific_css = 'add_snapshot.css';
 // $page_specific_js = 'add_snapshot.js'; // If it existed
 include 'templates/header.php';
 ?>
-        <h1 class="page-title">Add New Snapshot</h1>
+<h1 class="page-title">Add New Snapshot</h1>
 
-        <div class="form-container">
-            <?php if (!empty($feedback_message)): ?>
-                <div class="feedback-message <?= strpos(strtolower($feedback_message), 'error') !== false || strpos(strtolower($feedback_message), 'invalid') !== false ? 'error' : 'success' ?>">
-                    <?= htmlspecialchars($feedback_message) ?>
-                </div>
-            <?php endif; ?>
-
-            <form method="post" action="add_snapshot.php"> <!-- Ensure action points to self -->
-                <div class="form-group">
-                    <label for="date">Snapshot Date:</label>
-                    <input type="date" id="date" name="date" value="<?= date('Y-m-d') ?>" required>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Account Name</th>
-                            <th>Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($accounts as $a): ?>
-                            <tr>
-                                <td data-label="Account:"><?= htmlspecialchars($a['name']) ?> (<?= htmlspecialchars($a['type']) ?>)</td>
-                                <td>
-                                    <input type="number" step="0.01" name="balance[<?= $a['id'] ?>]" placeholder="0.00" value="<?= htmlspecialchars($last_snapshot_balances[$a['id']] ?? '') ?>" required>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if (empty($accounts)): ?>
-                            <tr>
-                                <td colspan="2" style="text-align:center;">No accounts found. Please add accounts via initial_data.sql or other admin interface.</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-                <button type="submit">Save Balances</button>
-            </form>
+<div class="form-container">
+    <?php if (!empty($feedback_message)): ?>
+        <div
+            class="feedback-message <?= strpos(strtolower($feedback_message), 'error') !== false || strpos(strtolower($feedback_message), 'invalid') !== false ? 'error' : 'success' ?>">
+            <?= htmlspecialchars($feedback_message) ?>
         </div>
+    <?php endif; ?>
+
+    <form method="post" action="add_snapshot.php"> <!-- Ensure action points to self -->
+        <div class="form-group">
+            <label for="date">Snapshot Date:</label>
+            <input type="date" id="date" name="date" value="<?= date('Y-m-d') ?>" required>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Account Name</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($accounts as $a): ?>
+                    <tr>
+                        <td data-label="Account:"><?= htmlspecialchars($a['name']) ?> (<?= htmlspecialchars($a['type']) ?>)
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" name="balance[<?= $a['id'] ?>]" placeholder="0.00"
+                                value="<?= htmlspecialchars($last_snapshot_balances[$a['id']] ?? '') ?>" required>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (empty($accounts)): ?>
+                    <tr>
+                        <td colspan="2" style="text-align:center;">No accounts found. Please add accounts via
+                            initial_data.sql or other admin interface.</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+        <button type="submit">Save Balances</button>
+    </form>
+</div>
 <?php include 'templates/footer.php'; ?>

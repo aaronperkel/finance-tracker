@@ -27,11 +27,11 @@ try {
     $dbEarliestLogDateObj = null;
     if ($dbEarliestLogDateStr) {
         $dbEarliestLogDateObj = new DateTime($dbEarliestLogDateStr);
-        $dbEarliestLogDateObj->setTime(0,0,0);
+        $dbEarliestLogDateObj->setTime(0, 0, 0);
     }
 
     $firstDayOfCurrentMonth = new DateTime('first day of this month');
-    $firstDayOfCurrentMonth->setTime(0,0,0);
+    $firstDayOfCurrentMonth->setTime(0, 0, 0);
 
     $calculatedStartDate;
 

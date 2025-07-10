@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $hours_worked = (float)$hours_worked_input; // Cast to float for comparison
+    $hours_worked = (float) $hours_worked_input; // Cast to float for comparison
 
     if ($hours_worked < 0 || $hours_worked > 24) { // Allow 0, check range
         http_response_code(400);

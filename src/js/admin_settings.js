@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('update-settings-form');
     const feedbackDiv = document.getElementById('settings-feedback');
     const payRateInput = document.getElementById('pay_rate');
@@ -10,14 +10,14 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errData => {
-                   throw new Error(`Failed to fetch settings: ${response.status} ${errData.error || response.statusText}`);
+                    throw new Error(`Failed to fetch settings: ${response.status} ${errData.error || response.statusText}`);
                 }).catch(() => new Error(`Failed to fetch settings: ${response.status} ${response.statusText}`));
             }
             return response.json();
         })
         .then(data => {
             if (data.error) { // Handle application-level errors from API
-                 throw new Error(`API Error: ${data.error}`);
+                throw new Error(`API Error: ${data.error}`);
             }
             payRateInput.value = data.pay_rate || '';
             federalTaxRateInput.value = data.federal_tax_rate ? (parseFloat(data.federal_tax_rate) * 100).toFixed(2) : '0.00';
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
     // Handle form submission
-    form.addEventListener('submit', function(event) {
+    form.addEventListener('submit', function (event) {
         event.preventDefault();
         feedbackDiv.textContent = '';
         feedbackDiv.className = 'feedback-message'; // Clear previous status, keep base class
@@ -61,25 +61,26 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settingsData)
         })
-        .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, body: data })))
-        .then(result => {
-            if (result.ok && result.body.success) {
-                feedbackDiv.textContent = result.body.success || 'Settings updated successfully!';
-                feedbackDiv.classList.add('success');
-            } else {
-                let errorMessage = 'Error: ' + (result.body.error || `Failed with status ${result.status}`);
-                if (result.body.details && Array.isArray(result.body.details)) {
-                     errorMessage += ' Details: ' + result.body.details.join(', ');
-                } else if (typeof result.body.details === 'string') {
-                     errorMessage += ' Details: ' + result.body.details;
+            .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, body: data })))
+            .then(result => {
+                if (result.ok && result.body.success) {
+                    feedbackDiv.textContent = result.body.success || 'Settings updated successfully!';
+                    feedbackDiv.classList.add('success');
+                } else {
+                    let errorMessage = 'Error: ' + (result.body.error || `Failed with status ${result.status}`);
+                    if (result.body.details && Array.isArray(result.body.details)) {
+                        errorMessage += ' Details: ' + result.body.details.join(', ');
+                    } else if (typeof result.body.details === 'string') {
+                        errorMessage += ' Details: ' + result.body.details;
+                    }
+                    feedbackDiv.textContent = errorMessage;
+                    feedbackDiv.classList.add('error');
                 }
-                feedbackDiv.textContent = errorMessage;
+            })
+            .catch(error => {
+                feedbackDiv.textContent = 'Request failed: ' + error.message;
                 feedbackDiv.classList.add('error');
-            }
-        })
-        .catch(error => {
-            feedbackDiv.textContent = 'Request failed: ' + error.message;
-            feedbackDiv.classList.add('error');
-        });
+            });
     });
 });
+
