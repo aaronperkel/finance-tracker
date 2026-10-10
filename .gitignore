@@ -34,3 +34,5 @@ scripts/*.pyc
 node_modules/
 
 repomix-output.xml
+# Local tool config
+.mise.toml

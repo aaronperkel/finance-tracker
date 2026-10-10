@@ -22,13 +22,8 @@
         <a href="add_snapshot.php"
             class="<?php echo (isset($active_page) && $active_page === 'add_snapshot') ? 'active' : ''; ?>">Add
             Snapshot</a>
-        <a href="calendar_hours.php"
-            class="<?php echo (isset($active_page) && $active_page === 'calendar') ? 'active' : ''; ?>">Hours
-            Calendar</a>
         <a href="manage_accounts.php"
             class="<?php echo (isset($active_page) && $active_page === 'manage_accounts') ? 'active' : ''; ?>">Manage
             Accounts</a>
-        <a href="admin_settings.php"
-            class="<?php echo (isset($active_page) && $active_page === 'settings') ? 'active' : ''; ?>">Settings</a>
     </nav>
     <div class="container">
